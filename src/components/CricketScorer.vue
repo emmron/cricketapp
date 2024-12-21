@@ -52,6 +52,25 @@ const showWicketModal = ref(false)
 const wicketTypes = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Other']
 const selectedWicketType = ref('Bowled')
 
+// Add new state for modals
+const showExtraRunsModal = ref(false)
+const showNewBowlerModal = ref(false)
+const extraRunsType = ref('')
+const extraRunsAmount = ref(0)
+const newBowlerName = ref('')
+
+// Add these refs at the top with other state
+const initForm = ref({
+  battingTeam: '',
+  bowlingTeam: '',
+  targetScore: '',
+  maxOvers: 20,
+  striker: '',
+  nonStriker: '',
+  venue: '',
+  matchType: 'T20'
+})
+
 // Computed stats
 const runRate = computed(() => {
   const totalOvers = overs.value + (balls.value / 6)
@@ -153,21 +172,43 @@ const addExtra = (type) => {
       break
     case 'bye':
     case 'leg-bye':
-      const runs = parseInt(prompt('How many runs?') || '0')
-      if (type === 'bye') extras.byes.value += runs
-      else extras.legByes.value += runs
-      score.value += runs
-      addBall()
+      extraRunsType.value = type
+      showExtraRunsModal.value = true
       break
   }
 }
 
+const confirmExtraRuns = () => {
+  const runs = parseInt(extraRunsAmount.value)
+  if (extraRunsType.value === 'bye') {
+    extras.byes.value += runs
+  } else {
+    extras.legByes.value += runs
+  }
+  score.value += runs
+  addBall()
+  showExtraRunsModal.value = false
+  extraRunsAmount.value = 0
+}
+
 const addBall = () => {
   if (!currentBowler.value.name) {
-    const name = prompt('Enter bowler name:')
-    if (name) currentBowler.value.name = name
+    showNewBowlerModal.value = true
+    return
   }
-  
+  updateBallCount()
+}
+
+const confirmNewBowler = () => {
+  if (newBowlerName.value) {
+    currentBowler.value.name = newBowlerName.value
+    updateBallCount()
+    showNewBowlerModal.value = false
+    newBowlerName.value = ''
+  }
+}
+
+const updateBallCount = () => {
   balls.value++
   currentBowler.value.balls++
   
@@ -211,16 +252,31 @@ const confirmWicket = (outBatsman, newBatsman) => {
 }
 
 const initializeInnings = () => {
-  const elements = ['battingTeam', 'bowlingTeam', 'targetScore', 'maxOvers', 'striker', 'nonStriker']
-  const values = elements.map(id => document.getElementById(id)?.value || '')
+  // Validate required fields
+  if (!initForm.value.battingTeam || !initForm.value.bowlingTeam || 
+      !initForm.value.striker || !initForm.value.nonStriker) {
+    alert('Please fill in all required fields')
+    return
+  }
 
-  matchInfo.value.battingTeam = values[0]
-  matchInfo.value.bowlingTeam = values[1]
-  matchInfo.value.targetScore = values[2] ? parseInt(values[2]) : null
-  settings.value.maxOvers = values[3] ? parseInt(values[3]) : 20
+  // Update match info
+  matchInfo.value = {
+    battingTeam: initForm.value.battingTeam,
+    bowlingTeam: initForm.value.bowlingTeam,
+    venue: initForm.value.venue,
+    date: new Date().toISOString().split('T')[0],
+    matchType: initForm.value.matchType,
+    targetScore: initForm.value.targetScore ? parseInt(initForm.value.targetScore) : null
+  }
 
-  batsmen.value[0].name = values[4]
-  batsmen.value[1].name = values[5]
+  // Update settings
+  settings.value.maxOvers = initForm.value.maxOvers
+
+  // Initialize batsmen
+  batsmen.value = [
+    { name: initForm.value.striker, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
+    { name: initForm.value.nonStriker, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false }
+  ]
 
   showInitModal.value = false
 }
@@ -228,6 +284,58 @@ const initializeInnings = () => {
 
 <template>
   <!-- Template remains unchanged -->
+
+  <!-- Extra Runs Modal -->
+  <div v-if="showExtraRunsModal" class="modal">
+    <div class="modal-content">
+      <h3>{{ extraRunsType === 'bye' ? 'Byes' : 'Leg Byes' }}</h3>
+      <div class="form-group">
+        <label>Number of Runs</label>
+        <div class="runs-quick-select">
+          <button 
+            v-for="n in 4" 
+            :key="n" 
+            @click="extraRunsAmount = n"
+            :class="['quick-select-btn', { active: extraRunsAmount === n }]"
+          >
+            {{ n }}
+          </button>
+        </div>
+        <input 
+          v-model="extraRunsAmount" 
+          type="number" 
+          min="0" 
+          max="6"
+          placeholder="Enter runs"
+        >
+      </div>
+      <div class="modal-buttons">
+        <button @click="showExtraRunsModal = false" class="btn-secondary">Cancel</button>
+        <button @click="confirmExtraRuns" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Bowler Modal -->
+  <div v-if="showNewBowlerModal" class="modal">
+    <div class="modal-content">
+      <h3>New Bowler</h3>
+      <div class="form-group">
+        <label>Bowler Name</label>
+        <input 
+          v-model="newBowlerName" 
+          type="text" 
+          placeholder="Enter bowler name"
+          @keyup.enter="confirmNewBowler"
+          ref="bowlerInput"
+        >
+      </div>
+      <div class="modal-buttons">
+        <button @click="showNewBowlerModal = false" class="btn-secondary">Cancel</button>
+        <button @click="confirmNewBowler" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -339,6 +447,52 @@ const initializeInnings = () => {
   
   .btn {
     width: 100%;
+  }
+}
+
+.runs-quick-select {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quick-select-btn {
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-background-soft);
+  cursor: pointer;
+}
+
+.quick-select-btn.active {
+  background: var(--color-heading);
+  color: white;
+  border-color: var(--color-heading);
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 1rem;
+    max-width: calc(100% - 2rem);
+  }
+
+  .quick-select-btn {
+    padding: 1rem;
+    font-size: 1.2rem;
+  }
+
+  input[type="number"] {
+    font-size: 1.2rem;
+    padding: 0.8rem;
   }
 }
 </style>
