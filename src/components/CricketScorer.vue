@@ -83,19 +83,23 @@ const totalExtras = computed(() => {
 
 const requiredRuns = computed(() => {
   if (!matchInfo.value.targetScore) return null
-  return matchInfo.value.targetScore - score.value
+  const remainingRuns = matchInfo.value.targetScore - score.value
+  return remainingRuns >= 0 ? remainingRuns : 0
 })
 
 const requiredRunRate = computed(() => {
   if (!matchInfo.value.targetScore) return null
-  const remainingRuns = matchInfo.value.targetScore - score.value
-  const remainingOvers = settings.value.maxOvers - (overs.value + balls.value/6)
-  return remainingOvers > 0 ? (remainingRuns / remainingOvers).toFixed(2) : 'N/A'
+  const remainingRuns = requiredRuns.value
+  const remainingBalls = (settings.value.maxOvers * 6) - (overs.value * 6 + balls.value)
+  const remainingOvers = remainingBalls / 6
+
+  if (remainingOvers <= 0 || remainingRuns <= 0) return '0.00'
+  return (remainingRuns / remainingOvers).toFixed(2)
 })
 
 // Game actions
 const saveState = () => {
-  history.value.push({
+  const currentState = {
     score: score.value,
     wickets: wickets.value,
     overs: overs.value,
@@ -105,8 +109,11 @@ const saveState = () => {
       noBalls: extras.noBalls.value,
       byes: extras.byes.value,
       legByes: extras.legByes.value
-    }
-  })
+    },
+    batsmen: JSON.parse(JSON.stringify(batsmen.value)),
+    currentBowler: currentBowler.value ? { ...currentBowler.value } : null
+  }
+  history.value.push(currentState)
 }
 
 const undo = () => {
@@ -283,57 +290,147 @@ const initializeInnings = () => {
 </script>
 
 <template>
-  <!-- Template remains unchanged -->
+  <!-- Main Scoring Interface -->
+  <div class="scoring-interface">
+    <!-- Primary Score Display -->
+    <div class="score-board">
+      <div class="main-score">
+        <div class="score-wrapper">
+          <span class="runs">{{ score.value }}</span>
+          <span class="divider">/</span>
+          <span class="wickets">{{ wickets.value }}</span>
+          <span class="overs">({{ overs.value }}.{{ balls.value }})</span>
+        </div>
+        <div class="run-rate">
+          <span>CRR: {{ runRate }}</span>
+          <span v-if="requiredRunRate">RRR: {{ requiredRunRate }}</span>
+        </div>
+      </div>
+      <div class="target-info" v-if="matchInfo.value.targetScore">
+        <div class="target">Target: {{ matchInfo.value.targetScore }}</div>
+        <div class="needs">Need {{ requiredRuns }} from {{ (settings.value.maxOvers - overs.value - balls.value/6).toFixed(1) }} ov</div>
+      </div>
+    </div>
 
-  <!-- Extra Runs Modal -->
-  <div v-if="showExtraRunsModal" class="modal">
-    <div class="modal-content">
-      <h3>{{ extraRunsType === 'bye' ? 'Byes' : 'Leg Byes' }}</h3>
-      <div class="form-group">
-        <label>Number of Runs</label>
-        <div class="runs-quick-select">
-          <button 
-            v-for="n in 4" 
-            :key="n" 
-            @click="extraRunsAmount = n"
-            :class="['quick-select-btn', { active: extraRunsAmount === n }]"
-          >
-            {{ n }}
+    <!-- Active Players Panel -->
+    <div class="players-panel">
+      <div class="batsmen">
+        <div v-for="batsman in batsmen.value" :key="batsman.name" 
+             :class="['batsman-card', { 'on-strike': batsman.onStrike }]">
+          <div class="player-name">{{ batsman.name || 'Batsman' }}</div>
+          <div class="stats-row">
+            <span class="runs">{{ batsman.runs }}*</span>
+            <span class="balls">({{ batsman.balls }})</span>
+            <span class="boundaries">{{ batsman.fours }}×4 {{ batsman.sixes }}×6</span>
+            <span class="strike-rate">
+              SR: {{ batsman.balls ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0' }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="bowler-card" v-if="currentBowler.value.name">
+        <div class="player-name">{{ currentBowler.value.name }}</div>
+        <div class="stats-row">
+          <span>{{ currentBowler.value.overs }}.{{ currentBowler.value.balls }}-{{ currentBowler.value.maidens }}-{{ currentBowler.value.runs }}-{{ currentBowler.value.wickets }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scoring Controls -->
+    <div class="scoring-controls">
+      <div class="primary-actions">
+        <div class="runs-grid">
+          <button v-for="runs in [0,1,2,3,4,6]" 
+                  :key="runs"
+                  @click="addRuns(runs)"
+                  :class="['btn-run', {'boundary': runs === 4 || runs === 6}]">
+            {{ runs }}
           </button>
         </div>
-        <input 
-          v-model="extraRunsAmount" 
-          type="number" 
-          min="0" 
-          max="6"
-          placeholder="Enter runs"
-        >
+        <div class="extras-grid">
+          <button @click="addExtra('wide')" class="btn-extra">Wide</button>
+          <button @click="addExtra('no-ball')" class="btn-extra">No Ball</button>
+          <button @click="addExtra('bye')" class="btn-extra">Bye</button>
+          <button @click="addExtra('leg-bye')" class="btn-extra">Leg Bye</button>
+        </div>
       </div>
-      <div class="modal-buttons">
-        <button @click="showExtraRunsModal = false" class="btn-secondary">Cancel</button>
-        <button @click="confirmExtraRuns" class="btn-primary">Confirm</button>
+      <div class="secondary-actions">
+        <button @click="addWicket" class="btn-wicket">
+          <span class="icon">🎯</span>
+          Wicket
+        </button>
+        <button @click="switchStriker" class="btn-switch">
+          <span class="icon">🔄</span>
+          Switch Ends
+        </button>
+        <button @click="undo" class="btn-undo">
+          <span class="icon">↩️</span>
+          Undo
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- New Bowler Modal -->
-  <div v-if="showNewBowlerModal" class="modal">
+  <!-- Modals -->
+  <div v-if="showExtraRunsModal" class="modal" @click.self="showExtraRunsModal = false">
     <div class="modal-content">
-      <h3>New Bowler</h3>
-      <div class="form-group">
-        <label>Bowler Name</label>
-        <input 
-          v-model="newBowlerName" 
-          type="text" 
-          placeholder="Enter bowler name"
-          @keyup.enter="confirmNewBowler"
-          ref="bowlerInput"
-        >
+      <header class="modal-header">
+        <h3>{{ extraRunsType === 'bye' ? 'Byes' : 'Leg Byes' }}</h3>
+        <button class="close-btn" @click="showExtraRunsModal = false">×</button>
+      </header>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Select Runs</label>
+          <div class="runs-quick-select">
+            <button 
+              v-for="n in 4" 
+              :key="n" 
+              @click="extraRunsAmount = n"
+              :class="['quick-select-btn', { active: extraRunsAmount === n }]"
+            >
+              {{ n }}
+            </button>
+          </div>
+          <input 
+            v-model="extraRunsAmount" 
+            type="number" 
+            min="0" 
+            max="6"
+            placeholder="Or enter custom amount"
+          >
+        </div>
       </div>
-      <div class="modal-buttons">
+      <footer class="modal-footer">
+        <button @click="showExtraRunsModal = false" class="btn-secondary">Cancel</button>
+        <button @click="confirmExtraRuns" class="btn-primary">Confirm</button>
+      </footer>
+    </div>
+  </div>
+
+  <div v-if="showNewBowlerModal" class="modal" @click.self="showNewBowlerModal = false">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3>New Bowler</h3>
+        <button class="close-btn" @click="showNewBowlerModal = false">×</button>
+      </header>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Bowler Name</label>
+          <input 
+            v-model="newBowlerName" 
+            type="text" 
+            placeholder="Enter bowler name"
+            @keyup.enter="confirmNewBowler"
+            ref="bowlerInput"
+            class="bowler-input"
+            autocomplete="off"
+          >
+        </div>
+      </div>
+      <footer class="modal-footer">
         <button @click="showNewBowlerModal = false" class="btn-secondary">Cancel</button>
-        <button @click="confirmNewBowler" class="btn-primary">Confirm</button>
-      </div>
+        <button @click="confirmNewBowler" class="btn-primary">Start Over</button>
+      </footer>
     </div>
   </div>
 </template>
