@@ -507,17 +507,53 @@ const initializeInnings = () => {
   </div>
 
   <!-- Wicket Modal -->
-  <div v-if="showWicketModal" class="modal-overlay" style="background: rgba(0,0,0,0.8)">
-    <div class="modal-card" style="background: #1a1a1a; color: #fff; padding: 20px; border-radius: 8px">
-      <h3>Wicket</h3>
-      <select v-model="selectedWicketType" style="background: #333; color: #fff; padding: 8px; width: 100%; margin: 10px 0">
-        <option v-for="type in wicketTypes" :key="type" :value="type">
-          {{ type }}
-        </option>
+  <div v-if="showWicketModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3>How was the batsman out?</h3>
+      
+      <select v-model="wicketDetails.type" class="wicket-select">
+        <option value="">Select dismissal type</option>
+        <option value="bowled">Bowled</option>
+        <option value="caught">Caught</option>
+        <option value="lbw">LBW</option>
+        <option value="runout">Run Out</option>
+        <option value="stumped">Stumped</option>
+        <option value="hitwicket">Hit Wicket</option>
       </select>
-      <div style="display: flex; gap: 10px; justify-content: flex-end">
-        <button @click="showWicketModal = false" style="background: #404040; color: #fff; padding: 8px 16px; border: none; border-radius: 4px">Cancel</button>
-        <button @click="addWicket" style="background: #dc2626; color: #fff; padding: 8px 16px; border: none; border-radius: 4px">Confirm</button>
+
+      <div v-if="wicketDetails.type === 'caught' || wicketDetails.type === 'runout'">
+        <input 
+          v-model="wicketDetails.fielder"
+          type="text"
+          placeholder="Fielder's name"
+          class="fielder-input"
+        />
+      </div>
+
+      <div class="new-batsman-section">
+        <h4>New Batsman</h4>
+        <input 
+          v-model="wicketDetails.newBatsman"
+          type="text"
+          placeholder="Enter new batsman's name"
+          class="batsman-input"
+        />
+      </div>
+
+      <div class="modal-actions">
+        <button 
+          @click="cancelWicket" 
+          class="btn btn-cancel"
+        >
+          Cancel
+        </button>
+        <button 
+          @click="confirmWicket"
+          :disabled="!isWicketDetailsValid"
+          class="btn btn-danger"
+        >
+          Confirm
+        </button>
       </div>
     </div>
   </div>
