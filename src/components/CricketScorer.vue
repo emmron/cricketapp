@@ -515,35 +515,57 @@ watch(
     <!-- Batsmen Info -->
     <div class="batsmen-panel">
       <div v-for="(batsman, index) in batsmen" :key="index"
-           style="background: #262626; padding: 15px; border-radius: 8px; margin: 10px 0"
-           :style="batsman.onStrike ? 'border: 2px solid #2563eb' : ''">
-        <div style="font-weight: bold">{{ batsman.name }}</div>
-        <div style="display: flex; gap: 10px; margin-top: 8px">
-          <span style="font-size: 1.2em">{{ batsman.runs }}</span>
-          <span style="color: #999">({{ batsman.balls }})</span>
-          <div style="margin-left: auto">
-            <span style="margin-right: 10px">4s: {{ batsman.fours }}</span>
-            <span>6s: {{ batsman.sixes }}</span>
+           class="batsman-card"
+           :class="{ 'on-strike': batsman.onStrike }">
+        <div class="batsman-name">{{ batsman.name }}</div>
+        <div class="batsman-stats">
+          <div class="primary-stats">
+            <span class="runs">{{ batsman.runs }}</span>
+            <span class="balls">({{ batsman.balls }})</span>
+            <span class="strike-rate" v-if="batsman.balls > 0">
+              SR: {{ ((batsman.runs / batsman.balls) * 100).toFixed(1) }}
+            </span>
+          </div>
+          <div class="boundary-stats">
+            <span class="fours">4s: {{ batsman.fours }}</span>
+            <span class="sixes">6s: {{ batsman.sixes }}</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Action Buttons -->
-    <div class="action-panel" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px">
-      <button @click="switchStriker" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
+    <div class="action-panel">
+      <button 
+        @click="switchStriker" 
+        class="action-btn"
+        title="Switch batting strike"
+      >
         <i class="fas fa-exchange-alt"></i>
         Switch Strike
       </button>
-      <button @click="undo" :disabled="!history.length" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
+      <button 
+        @click="undo" 
+        :disabled="!history.length" 
+        class="action-btn"
+        title="Undo last action"
+      >
         <i class="fas fa-undo"></i>
         Undo
       </button>
-      <button @click="exportToCSV" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
+      <button 
+        @click="exportToCSV" 
+        class="action-btn"
+        title="Export match data"
+      >
         <i class="fas fa-file-export"></i>
         Export
       </button>
-      <button @click="saveMatch" style="background: #16a34a; color: #fff; padding: 10px; border: none; border-radius: 4px">
+      <button 
+        @click="saveMatch" 
+        class="action-btn save-btn"
+        title="Save match progress"
+      >
         <i class="fas fa-save"></i>
         Save
       </button>
@@ -551,56 +573,74 @@ watch(
   </div>
 
   <!-- Wicket Modal -->
-  <div v-if="showWicketModal" class="modal-overlay">
-    <div class="modal-card">
-      <h3>How was the batsman out?</h3>
-      
-      <select v-model="wicketDetails.type" class="wicket-select">
-        <option value="">Select dismissal type</option>
-        <option value="bowled">Bowled</option>
-        <option value="caught">Caught</option>
-        <option value="lbw">LBW</option>
-        <option value="runout">Run Out</option>
-        <option value="stumped">Stumped</option>
-        <option value="hitwicket">Hit Wicket</option>
-      </select>
+  <Teleport to="body">
+    <div v-if="showWicketModal" class="modal-overlay" @click.self="cancelWicket">
+      <div class="modal-content" role="dialog" aria-labelledby="wicket-modal-title">
+        <h3 id="wicket-modal-title" class="modal-title">How was the batsman out?</h3>
+        
+        <form @submit.prevent="confirmWicket" class="wicket-form">
+          <div class="form-group">
+            <label for="dismissal-type" class="form-label">Dismissal Type</label>
+            <select 
+              v-model="wicketDetails.type" 
+              id="dismissal-type"
+              class="modal-select"
+              required
+            >
+              <option value="">Select dismissal type</option>
+              <option value="bowled">Bowled</option>
+              <option value="caught">Caught</option>
+              <option value="lbw">LBW</option>
+              <option value="runout">Run Out</option>
+              <option value="stumped">Stumped</option>
+              <option value="hitwicket">Hit Wicket</option>
+            </select>
+          </div>
 
-      <div v-if="wicketDetails.type === 'caught' || wicketDetails.type === 'runout'">
-        <input 
-          v-model="wicketDetails.fielder"
-          type="text"
-          placeholder="Fielder's name"
-          class="fielder-input"
-        />
-      </div>
+          <div v-if="wicketDetails.type === 'caught' || wicketDetails.type === 'runout'" class="form-group">
+            <label for="fielder-name" class="form-label">Fielder's Name</label>
+            <input 
+              v-model="wicketDetails.fielder"
+              id="fielder-name"
+              type="text"
+              class="modal-input"
+              required
+              placeholder="Enter fielder's name"
+            />
+          </div>
 
-      <div class="new-batsman-section">
-        <h4>New Batsman</h4>
-        <input 
-          v-model="wicketDetails.newBatsman"
-          type="text"
-          placeholder="Enter new batsman's name"
-          class="batsman-input"
-        />
-      </div>
+          <div class="form-group">
+            <label for="new-batsman" class="form-label">New Batsman</label>
+            <input 
+              v-model="wicketDetails.newBatsman"
+              id="new-batsman"
+              type="text"
+              class="modal-input"
+              required
+              placeholder="Enter new batsman's name"
+            />
+          </div>
 
-      <div class="modal-actions">
-        <button 
-          @click="cancelWicket" 
-          class="btn btn-cancel"
-        >
-          Cancel
-        </button>
-        <button 
-          @click="confirmWicket"
-          :disabled="!isWicketDetailsValid"
-          class="btn btn-danger"
-        >
-          Confirm
-        </button>
+          <div class="modal-actions">
+            <button 
+              type="button"
+              @click="cancelWicket" 
+              class="modal-btn cancel-btn"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              :disabled="!isWicketDetailsValid"
+              class="modal-btn confirm-btn"
+            >
+              Confirm
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
