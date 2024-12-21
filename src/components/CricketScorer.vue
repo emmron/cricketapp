@@ -1,492 +1,362 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-// Add error logging utility
-const logError = (context, error) => {
-  console.error(`[CricketScorer] ${context}:`, error)
-  return false
-}
+// Core game state using 2D matrix for ball-by-ball tracking
+const gameMatrix = ref(Array(50).fill().map(() => Array(6).fill(null)))
 
-// Core state management using immutable state pattern
-const createInitialState = () => {
-  try {
-    return {
-      score: ref(0),
-      wickets: ref(0),
-      overs: ref(0),
-      balls: ref(0),
-      extras: {
-        wides: ref(0),
-        noBalls: ref(0),
-        byes: ref(0),
-        legByes: ref(0)
-      },
-      history: ref([])
-    }
-  } catch (err) {
-    logError('Failed to create initial state', err)
-    throw new Error('Game initialization failed')
-  }
-}
+// Current position in the matrix
+const currentPosition = ref({
+  over: 0,
+  ball: 0
+})
 
-// Player state management using entity pattern
-const createBatsman = (isOnStrike = false) => ({
-  id: crypto.randomUUID(),
+// Game state
+const game = ref({
+  score: 0,
+  wickets: 0,
+  extras: {
+    wides: 0,
+    noBalls: 0,
+    byes: 0,
+    legByes: 0
+  },
+  target: null,
+  result: null
+})
+
+// Partnership matrix tracks runs scored between wickets
+const partnershipMatrix = ref([])
+
+// Over matrix tracks runs per over
+const overMatrix = ref(Array(50).fill(0))
+
+// Batsmen matrix tracks who batted at each position
+const batsmenMatrix = ref(Array(11).fill().map((_, index) => ({
   name: '',
+  position: index + 1,
   runs: 0,
   balls: 0,
   fours: 0,
   sixes: 0,
-  onStrike: isOnStrike,
-  dismissalType: null,
-  dismissedBy: null,
-  fielder: null,
-  strikeRate: computed(() => balls > 0 ? (runs / balls) * 100 : 0)
-})
+  dismissal: null,
+  timeline: [] // Array of ball-by-ball scoring
+})))
 
-const createBowler = () => ({
-  id: crypto.randomUUID(),
+// Bowlers matrix tracks overs bowled by each bowler
+const bowlersMatrix = ref(Array(11).fill().map(() => ({
   name: '',
-  overs: 0,
-  balls: 0,
-  runs: 0,
-  wickets: 0,
-  maidens: 0,
-  runsInOver: 0,
-  economy: computed(() => {
-    const totalOvers = overs + (balls / 6)
-    return totalOvers > 0 ? runs / totalOvers : 0
-  })
+  overs: Array(50).fill().map(() => ({
+    runs: 0,
+    wickets: 0,
+    balls: Array(6).fill(null)
+  }))
+})))
+
+// Add these constants at the top of the script
+const MAX_OVERS = 50
+const MAX_WICKETS = 10
+
+// Add this state near the top of the script setup
+const wicketModal = ref({
+  show: false,
+  details: {
+    type: 'bowled',
+    fielder: '',
+    newBatsman: '',
+    runs: 0
+  }
 })
 
-// Match configuration using singleton pattern with validation
-const matchConfig = {
-  settings: ref({
-    maxOvers: 20,
-    maxWickets: 10,
-    powerPlayOvers: 6,
-    enforceMaxWickets: true,
-    allowExtraTime: false,
-    drsEnabled: false
-  }),
+// Computed properties
+const currentOver = computed(() => {
+  const over = gameMatrix.value[currentPosition.value.over]
+  return over.filter(ball => ball !== null).length
+})
+
+const runRate = computed(() => {
+  const totalOvers = currentPosition.value.over + (currentOver.value / 6)
+  return totalOvers > 0 ? game.value.score / totalOvers : 0
+})
+
+// Add this computed property after other computed properties
+const activeBatsmen = computed(() => {
+  return batsmenMatrix.value.filter(batsman => batsman.name)
+})
+
+// Ball recording function
+const recordBall = (details) => {
+  const { over, ball } = currentPosition.value
   
-  matchInfo: ref({
-    id: crypto.randomUUID(),
-    battingTeam: '',
-    bowlingTeam: '',
-    venue: '',
-    date: new Date().toISOString().split('T')[0],
-    matchType: 'T20',
-    targetScore: null,
-    inningsNumber: 1,
-    fallOfWickets: [],
-    startTime: null,
-    weather: null,
-    pitch: null
-  }),
+  // Validate over bounds
+  if (over >= MAX_OVERS) {
+    console.warn('Maximum overs reached')
+    return
+  }
 
-  validate() {
-    const errors = []
-    const s = this.settings.value
-    const m = this.matchInfo.value
+  // Ensure required properties exist
+  const ballDetails = {
+    ...details,
+    striker: strikerPosition.value,
+    bowler: currentBowler.value?.name,
+    timestamp: new Date().toISOString()
+  }
+  
+  // Record in game matrix
+  gameMatrix.value[over][ball] = ballDetails
 
-    if (s.maxOvers < 1) errors.push('Invalid max overs')
-    if (s.maxWickets < 1) errors.push('Invalid max wickets')
-    if (!m.battingTeam) errors.push('Batting team required')
-    if (!m.bowlingTeam) errors.push('Bowling team required')
-    
-    return {
-      isValid: errors.length === 0,
-      errors
+  // Update game score
+  game.value.score += ballDetails.runs
+
+  // Update batsman matrix
+  const striker = batsmenMatrix.value.find(b => b.position === ballDetails.striker)
+  if (striker) {
+    striker.timeline.push(ballDetails)
+    striker.runs += ballDetails.runs
+    striker.balls++
+    if (ballDetails.runs === 4) striker.fours++
+    if (ballDetails.runs === 6) striker.sixes++
+  }
+
+  // Update bowler matrix
+  const bowler = bowlersMatrix.value.find(b => b.name === ballDetails.bowler)
+  if (bowler) {
+    bowler.overs[over].balls[ball] = ballDetails
+    bowler.overs[over].runs += ballDetails.runs
+    if (ballDetails.wicket) bowler.overs[over].wickets++
+  }
+
+  // Update over matrix
+  overMatrix.value[over] += ballDetails.runs
+
+  // Move to next ball
+  if (ball === 5) {
+    if (over + 1 < MAX_OVERS) {
+      currentPosition.value = {
+        over: over + 1,
+        ball: 0
+      }
     }
+  } else {
+    currentPosition.value.ball++
   }
 }
 
-// Initialize core state with error handling
-const gameState = (() => {
-  try {
-    return createInitialState()
-  } catch (err) {
-    console.error('Failed to initialize game state:', err)
-    throw new Error('Game initialization failed')
+// Wicket handling
+const takeWicket = (details) => {
+  // If no details provided, show modal instead
+  if (!details) {
+    wicketModal.value.show = true
+    return
   }
-})()
 
-const batsmen = ref([createBatsman(true), createBatsman(false)])
-const currentBowler = ref(createBowler())
+  // Validate wickets
+  if (game.value.wickets >= MAX_WICKETS) {
+    console.warn('Maximum wickets reached')
+    return
+  }
 
-// Add validation computed properties
-const validators = {
-  canTakeWicket: computed(() => {
-    try {
-      return (
-        gameState.wickets.value < matchConfig.settings.value.maxWickets &&
-        batsmen.value.some(b => b.name) &&
-        !WicketCommand.state.value.showModal &&
-        currentBowler.value?.name
-      )
-    } catch (err) {
-      logError('Wicket validation failed', err)
-      return false
+  // Get current bowler before recording wicket
+  const bowler = currentBowler.value?.name
+  if (!bowler) {
+    console.error('No current bowler selected')
+    return
+  }
+
+  const outBatsmanPosition = strikerPosition.value
+  const outBatsman = batsmenMatrix.value.find(b => b.position === outBatsmanPosition)
+  
+  if (!outBatsman) {
+    console.error('Could not find batsman to dismiss')
+    return
+  }
+
+  // Record wicket in matrices
+  const wicketBall = {
+    type: 'W',
+    runs: details?.runs || 0,
+    striker: outBatsmanPosition,
+    bowler: bowler, // Use the retrieved bowler name
+    wicket: {
+      type: details?.type || 'bowled',
+      batsman: outBatsman.name,
+      fielder: details?.fielder,
+      bowler: bowler // Use the retrieved bowler name
     }
-  }),
+  }
 
-  isDetailsValid: computed(() => {
-    try {
-      const details = WicketCommand.state.value.details
-      if (!details.type || !details.newBatsman?.trim()) return false
+  // Record the ball
+  recordBall(wicketBall)
 
-      const validations = {
-        caught: () => details.fielder?.trim() && currentBowler.value.name,
-        runout: () => details.fielder?.trim(),
-        stumped: () => details.fielder?.trim() && currentBowler.value.name,
-        bowled: () => currentBowler.value.name,
-        lbw: () => currentBowler.value.name,
-        hitwicket: () => currentBowler.value.name,
-        retired: () => true
-      }
-
-      return validations[details.type]?.() ?? false
-    } catch (err) {
-      logError('Details validation failed', err) 
-      return false
-    }
+  // Update partnership matrix with correct wicket number
+  partnershipMatrix.value.push({
+    wicketNumber: game.value.wickets, // Remove the +1 since wickets haven't been incremented yet
+    runs: calculatePartnershipRuns(),
+    batsmen: [outBatsman.name, currentPartner.value?.name]
   })
-}
 
-// Add debugging helpers
-const DEBUG = process.env.NODE_ENV !== 'production'
+  // Update batsman's dismissal
+  outBatsman.dismissal = wicketBall.wicket
 
-const debugLog = (...args) => {
-  if (DEBUG) {
-    console.log('[CricketScorer]', ...args)
-  }
-}
+  // Update game state
+  game.value.wickets++
 
-// Wicket handling using command pattern with error boundaries
-const WicketCommand = {
-  state: ref({
-    showModal: false,
-    details: {
-      type: '',
-      fielder: '',
-      newBatsman: '',
-      bowler: '',
-      batsmanOut: null,
-      runsOnDismissal: 0,
-      ballCount: true,
-      isStriker: true,
-      additionalRuns: 0,
-      timestamp: null,
-      reviewTaken: false
-    }
-  }),
-
-  execute: {
-    add() {
-      debugLog('Adding wicket')
-      if (!validators.canTakeWicket.value) {
-        return logError('Cannot take wicket: validation failed')
-      }
-
-      try {
-        // Save state for undo with timestamp
-        const currentState = {
-          gameState: { ...gameState },
-          batsmen: [...batsmen.value],
-          bowler: { ...currentBowler.value }
-        }
-        
-        debugLog('Saving current state', currentState)
-        
-        gameState.history.value.push({
-          timestamp: new Date().toISOString(),
-          state: JSON.stringify(currentState)
-        })
-
-        this.state.value = {
-          showModal: true,
-          details: this.getInitialDetails()
-        }
-        return true
-      } catch (err) {
-        return logError('Failed to add wicket', err)
-      }
-    },
-
-    cancel() {
-      try {
-        if (gameState.history.value.length) {
-          const previousState = JSON.parse(gameState.history.value.pop().state)
-          Object.assign(gameState, previousState.gameState)
-          batsmen.value = previousState.batsmen
-          currentBowler.value = previousState.bowler
-        }
-        
-        this.state.value.showModal = false
-        this.state.value.details = this.getInitialDetails()
-        return true
-      } catch (err) {
-        console.error('Failed to cancel wicket:', err)
-        return false
-      }
-    },
-
-    confirm() {
-      if (!validators.isDetailsValid.value) {
-        console.warn('Invalid wicket details')
-        return false
-      }
-
-      const details = this.state.value.details
-      const outBatsman = details.isStriker ? 
-        batsmen.value.find(b => b.onStrike) :
-        batsmen.value.find(b => !b.onStrike)
-
-      if (!outBatsman) {
-        console.error('Could not find batsman to dismiss')
-        return false
-      }
-
-      try {
-        // Transaction-like atomic updates
-        const updates = () => {
-          // Update batsman stats
-          outBatsman.dismissalType = details.type
-          outBatsman.dismissedBy = details.bowler
-          outBatsman.fielder = details.fielder
-
-          // Update match stats
-          gameState.wickets.value++
-          if (details.type !== 'runout' && details.type !== 'retired') {
-            currentBowler.value.wickets++
-          }
-
-          // Record fall of wicket with enhanced details
-          matchConfig.matchInfo.value.fallOfWickets.push({
-            score: gameState.score.value + details.additionalRuns,
-            wicketNumber: gameState.wickets.value,
-            overs: gameState.overs.value,
-            balls: gameState.balls.value,
-            batsmanName: outBatsman.name,
-            dismissalType: details.type,
-            bowler: details.bowler,
-            fielder: details.fielder,
-            runs: outBatsman.runs,
-            balls: outBatsman.balls,
-            timestamp: details.timestamp,
-            partnership: this.calculatePartnership(outBatsman),
-            reviewTaken: details.reviewTaken
-          })
-
-          // Handle additional runs
-          if (details.additionalRuns > 0) {
-            gameState.score.value += details.additionalRuns
-            outBatsman.runs += details.additionalRuns
-            if (details.ballCount) {
-              outBatsman.balls++
-            }
-          }
-
-          // Replace dismissed batsman
-          const batsmanIndex = batsmen.value.indexOf(outBatsman)
-          batsmen.value[batsmanIndex] = createBatsman()
-          batsmen.value[batsmanIndex].name = details.newBatsman.trim()
-          batsmen.value[batsmanIndex].onStrike = outBatsman.onStrike
-
-          // Update ball count
-          if (details.ballCount) {
-            this.addBall()
-          }
-        }
-
-        updates()
-        this.state.value.showModal = false
-        return true
-      } catch (err) {
-        console.error('Failed to confirm wicket:', err)
-        return false
-      }
-    },
-
-    calculatePartnership(outBatsman) {
-      // Calculate partnership runs and balls
-      const partnershipDetails = {
+  // Add new batsman if provided
+  if (details?.newBatsman) {
+    const newPosition = batsmenMatrix.value.findIndex(b => !b.name)
+    if (newPosition >= 0) {
+      batsmenMatrix.value[newPosition] = {
+        name: details.newBatsman,
+        position: newPosition + 1,
         runs: 0,
         balls: 0,
-        partner: batsmen.value.find(b => b !== outBatsman)?.name || 'Unknown'
-      }
-      return partnershipDetails
-    },
-
-    getInitialDetails() {
-      return {
-        type: '',
-        fielder: '',
-        newBatsman: '',
-        bowler: currentBowler.value?.name || '',
-        batsmanOut: null,
-        runsOnDismissal: 0,
-        ballCount: true,
-        isStriker: true,
-        additionalRuns: 0,
-        timestamp: null,
-        reviewTaken: false
-      }
-    },
-
-    addBall() {
-      gameState.balls.value++
-      if (gameState.balls.value === 6) {
-        gameState.overs.value++
-        gameState.balls.value = 0
+        fours: 0,
+        sixes: 0,
+        dismissal: null,
+        timeline: []
       }
     }
+  }
+}
+
+// Helper functions
+const calculatePartnershipRuns = () => {
+  const lastWicket = partnershipMatrix.value.length
+  const runsAtLastWicket = lastWicket > 0 ? 
+    partnershipMatrix.value[lastWicket - 1].totalRuns : 0
+  return game.value.score - runsAtLastWicket
+}
+
+const currentPartner = computed(() => {
+  return batsmenMatrix.value.find(b => 
+    b.name && !b.dismissal && b !== currentStriker.value
+  )
+})
+
+const currentStriker = computed(() => {
+  return batsmenMatrix.value.find(b => 
+    b.name && !b.dismissal && b.position === strikerPosition.value
+  )
+})
+
+const strikerPosition = ref(1)
+
+// Add this computed property for the current bowler
+const currentBowler = computed(() => {
+  return bowlersMatrix.value.find(b => b.name && !b.overs[currentPosition.value.over].complete)
+})
+
+// Add this new method to handle modal confirmation
+const confirmWicket = () => {
+  takeWicket(wicketModal.value.details)
+  wicketModal.value.show = false
+  // Reset form
+  wicketModal.value.details = {
+    type: 'bowled',
+    fielder: '',
+    newBatsman: '',
+    runs: 0
   }
 }
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="WicketCommand.state.value.showModal" 
-         class="modal-overlay" 
-         @click.self="WicketCommand.execute.cancel"
-         role="dialog"
-         aria-modal="true">
-      <div class="modal-content" aria-labelledby="wicket-modal-title">
-        <h3 id="wicket-modal-title" class="modal-title">Wicket Details</h3>
-        
-        <form @submit.prevent="WicketCommand.execute.confirm" class="wicket-form">
-          <div class="form-group">
-            <label for="dismissal-type" class="form-label">Dismissal Type *</label>
-            <select 
-              v-model="WicketCommand.state.value.details.type" 
-              id="dismissal-type"
-              class="modal-select"
-              required
-            >
-              <option value="">Select dismissal type</option>
-              <option value="bowled">Bowled</option>
-              <option value="caught">Caught</option>
-              <option value="lbw">LBW</option>
-              <option value="runout">Run Out</option>
-              <option value="stumped">Stumped</option>
-              <option value="hitwicket">Hit Wicket</option>
-              <option value="retired">Retired</option>
-            </select>
-          </div>
+  <div class="scorer">
+    <div class="score-display">
+      <h2>{{ game.score }}/{{ game.wickets }}</h2>
+      <p>Overs: {{ currentPosition.over }}.{{ currentOver }}</p>
+      <p>Run Rate: {{ runRate.toFixed(2) }}</p>
+    </div>
 
-          <div v-if="WicketCommand.state.value.details.type === 'runout'" class="form-group">
-            <label class="form-label">Who is out? *</label>
-            <div class="radio-group">
-              <label>
-                <input 
-                  type="radio" 
-                  v-model="WicketCommand.state.value.details.isStriker" 
-                  :value="true"
-                > Striker
-              </label>
-              <label>
-                <input 
-                  type="radio" 
-                  v-model="WicketCommand.state.value.details.isStriker" 
-                  :value="false"
-                > Non-striker
-              </label>
-            </div>
-          </div>
-
-          <div v-if="['caught', 'runout', 'stumped'].includes(WicketCommand.state.value.details.type)" 
-               class="form-group">
-            <label for="fielder-name" class="form-label">Fielder's Name *</label>
-            <input 
-              v-model="WicketCommand.state.value.details.fielder"
-              id="fielder-name"
-              type="text"
-              class="modal-input"
-              required
-              placeholder="Enter fielder's name"
-            />
-          </div>
-
-          <div v-if="WicketCommand.state.value.details.type === 'runout'" class="form-group">
-            <label for="additional-runs" class="form-label">Runs Completed</label>
-            <input 
-              v-model.number="WicketCommand.state.value.details.additionalRuns"
-              id="additional-runs"
-              type="number"
-              min="0"
-              max="3"
-              class="modal-input"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="new-batsman" class="form-label">New Batsman *</label>
-            <input 
-              v-model="WicketCommand.state.value.details.newBatsman"
-              id="new-batsman"
-              type="text"
-              class="modal-input"
-              required
-              placeholder="Enter new batsman's name"
-            />
-          </div>
-
-          <div v-if="matchConfig.settings.value.drsEnabled" class="form-group">
-            <label>
-              <input 
-                type="checkbox"
-                v-model="WicketCommand.state.value.details.reviewTaken"
-              > DRS Review Taken
-            </label>
-          </div>
-
-          <div class="modal-actions">
-            <button 
-              type="button"
-              @click="WicketCommand.execute.cancel" 
-              class="modal-btn cancel-btn"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit"
-              :disabled="!WicketCommand.validators.isDetailsValid"
-              class="modal-btn confirm-btn"
-            >
-              Confirm Wicket
-            </button>
-          </div>
-        </form>
+    <div class="matrix-display">
+      <h3>Current Over</h3>
+      <div class="over-matrix">
+        <div v-for="(ball, i) in gameMatrix[currentPosition.over]" 
+             :key="i"
+             class="ball"
+             :class="{ current: i === currentPosition.ball }">
+          {{ ball?.runs || '-' }}
+        </div>
       </div>
     </div>
-  </Teleport>
+
+    <div class="batsmen-display">
+      <div v-for="batsman in activeBatsmen" 
+           :key="batsman.position"
+           class="batsman-row">
+        <span>{{ batsman.name }}</span>
+        <span>{{ batsman.runs }}({{ batsman.balls }})</span>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button @click="takeWicket">Wicket</button>
+      <button v-for="runs in [0,1,2,3,4,6]" 
+              :key="runs"
+              @click="recordBall({runs})">
+        {{ runs }}
+      </button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.modal-content {
-  background: #ffffff;
+.scorer {
   padding: 2rem;
-  border-radius: 0.5rem;
-  width: 95%;
-  max-width: 650px;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(2px);
+.score-display {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.matrix-display {
+  margin: 2rem 0;
+}
+
+.over-matrix {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+}
+
+.ball {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.ball.current {
+  background: #e9ecef;
+}
+
+.batsmen-display {
+  margin: 2rem 0;
+}
+
+.batsman-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+button {
+  padding: 1rem;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0056b3;
 }
 </style>

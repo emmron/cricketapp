@@ -6,17 +6,33 @@ import CricketScorer from './components/CricketScorer.vue'
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
-        <h1 class="title">Cricket Scorer</h1>
-        <p class="subtitle">Track your cricket matches with ease</p>
+        <h1 class="title">OZ Crickets Scorer</h1>
+        <p class="subtitle">Professional Cricket Scoring Made Simple</p>
+        <div class="header-actions">
+          <button class="new-match-btn">New Match</button>
+          <button class="load-match-btn">Load Match</button>
+        </div>
       </div>
     </header>
 
     <main class="main-content">
+      <nav class="match-nav">
+        <button class="nav-btn active">Scoring</button>
+        <button class="nav-btn">Statistics</button>
+        <button class="nav-btn">Settings</button>
+      </nav>
       <CricketScorer />
     </main>
 
     <footer class="app-footer">
-      <p class="footer-text">&copy; 2023 Cricket Scorer. All rights reserved.</p>
+      <div class="footer-content">
+        <p class="footer-text">&copy; 2023 OZ Crickets. All rights reserved.</p>
+        <nav class="footer-nav">
+          <a href="#" class="footer-link">About</a>
+          <a href="#" class="footer-link">Help</a>
+          <a href="#" class="footer-link">Contact</a>
+        </nav>
+      </div>
     </footer>
   </div>
 </template>
