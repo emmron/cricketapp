@@ -21,6 +21,20 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true,
-    minify: 'terser'
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['vue'],
+          'pwa': ['vite-plugin-pwa']
+        }
+      }
+    }
   }
 })
