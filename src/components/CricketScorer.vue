@@ -8,7 +8,7 @@ const overs = ref(0)
 const balls = ref(0)
 const extras = {
   wides: ref(0),
-  noBalls: ref(0),
+  noBalls: ref(0), 
   byes: ref(0),
   legByes: ref(0)
 }
@@ -52,14 +52,14 @@ const showWicketModal = ref(false)
 const wicketTypes = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Other']
 const selectedWicketType = ref('Bowled')
 
-// Add new state for modals
+// Modal state
 const showExtraRunsModal = ref(false)
 const showNewBowlerModal = ref(false)
 const extraRunsType = ref('')
 const extraRunsAmount = ref(0)
 const newBowlerName = ref('')
 
-// Add these refs at the top with other state
+// Form state
 const initForm = ref({
   battingTeam: '',
   bowlingTeam: '',
@@ -71,10 +71,10 @@ const initForm = ref({
   matchType: 'T20'
 })
 
-// Computed stats
+// Computed stats with improved precision
 const runRate = computed(() => {
   const totalOvers = overs.value + (balls.value / 6)
-  return totalOvers > 0 ? (score.value / totalOvers).toFixed(2) : '0.00'
+  return totalOvers > 0 ? Number((score.value / totalOvers).toFixed(2)) : 0
 })
 
 const totalExtras = computed(() => {
@@ -84,7 +84,7 @@ const totalExtras = computed(() => {
 const requiredRuns = computed(() => {
   if (!matchInfo.value.targetScore) return null
   const remainingRuns = matchInfo.value.targetScore - score.value
-  return remainingRuns >= 0 ? remainingRuns : 0
+  return Math.max(remainingRuns, 0)
 })
 
 const requiredRunRate = computed(() => {
@@ -93,11 +93,11 @@ const requiredRunRate = computed(() => {
   const remainingBalls = (settings.value.maxOvers * 6) - (overs.value * 6 + balls.value)
   const remainingOvers = remainingBalls / 6
 
-  if (remainingOvers <= 0 || remainingRuns <= 0) return '0.00'
-  return (remainingRuns / remainingOvers).toFixed(2)
+  if (remainingOvers <= 0 || remainingRuns <= 0) return 0
+  return Number((remainingRuns / remainingOvers).toFixed(2))
 })
 
-// Game actions
+// Game actions with improved validation
 const saveState = () => {
   const currentState = {
     score: score.value,
@@ -117,6 +117,8 @@ const saveState = () => {
 }
 
 const undo = () => {
+  if (history.value.length === 0) return
+  
   const previousState = history.value.pop()
   if (previousState) {
     score.value = previousState.score
@@ -127,6 +129,10 @@ const undo = () => {
     extras.noBalls.value = previousState.extras.noBalls
     extras.byes.value = previousState.extras.byes
     extras.legByes.value = previousState.extras.legByes
+    batsmen.value = previousState.batsmen
+    if (previousState.currentBowler) {
+      currentBowler.value = previousState.currentBowler
+    }
   }
 }
 
@@ -139,15 +145,17 @@ const switchStriker = () => {
 
 const updateBatsmanScore = (runs) => {
   const striker = batsmen.value.find(b => b.onStrike)
-  if (striker) {
-    striker.runs += runs
-    striker.balls++
-    if (runs === 4) striker.fours++
-    if (runs === 6) striker.sixes++
-  }
+  if (!striker) return
+
+  striker.runs += runs
+  striker.balls++
+  if (runs === 4) striker.fours++
+  if (runs === 6) striker.sixes++
 }
 
 const updateBowlerStats = (runs, isExtra = false) => {
+  if (!currentBowler.value.name) return
+  
   if (!isExtra) {
     currentBowler.value.runs += runs
     currentBowler.value.runsInOver += runs
@@ -155,15 +163,27 @@ const updateBowlerStats = (runs, isExtra = false) => {
 }
 
 const addRuns = (runs, isExtra = false) => {
+  if (runs < 0 || runs > 6) return
+  if (runs === 5) return // Invalid cricket score
+  
   saveState()
   score.value += runs
+  
   if (!isExtra) {
     updateBatsmanScore(runs)
     updateBowlerStats(runs)
+    addBall()
+  }
+  
+  // Auto switch strike for odd runs
+  if (runs % 2 === 1) {
+    switchStriker()
   }
 }
 
 const addExtra = (type) => {
+  if (!type) return
+  
   saveState()
   
   switch(type) {
@@ -187,6 +207,8 @@ const addExtra = (type) => {
 
 const confirmExtraRuns = () => {
   const runs = parseInt(extraRunsAmount.value)
+  if (isNaN(runs) || runs < 0) return
+  
   if (extraRunsType.value === 'bye') {
     extras.byes.value += runs
   } else {
@@ -207,12 +229,12 @@ const addBall = () => {
 }
 
 const confirmNewBowler = () => {
-  if (newBowlerName.value) {
-    currentBowler.value.name = newBowlerName.value
-    updateBallCount()
-    showNewBowlerModal.value = false
-    newBowlerName.value = ''
-  }
+  if (!newBowlerName.value.trim()) return
+  
+  currentBowler.value.name = newBowlerName.value.trim()
+  updateBallCount()
+  showNewBowlerModal.value = false
+  newBowlerName.value = ''
 }
 
 const updateBallCount = () => {
@@ -233,363 +255,439 @@ const updateBallCount = () => {
 }
 
 const addWicket = () => {
+  if (wickets.value >= settings.value.maxWickets) return
+  
   saveState()
-  if (wickets.value < settings.value.maxWickets) {
-    showWicketModal.value = true
-  }
+  showWicketModal.value = true
 }
 
 const confirmWicket = (outBatsman, newBatsman) => {
-  if (wickets.value < settings.value.maxWickets) {
-    wickets.value++
-    currentBowler.value.wickets++
-    
-    const striker = batsmen.value.find(b => b.onStrike)
-    if (striker) {
-      striker.balls++
-      striker.name = newBatsman
-      striker.runs = 0
-      striker.balls = 0
-      striker.fours = 0
-      striker.sixes = 0
-    }
-    addBall()
+  if (!newBatsman || wickets.value >= settings.value.maxWickets) return
+  
+  wickets.value++
+  currentBowler.value.wickets++
+  
+  const striker = batsmen.value.find(b => b.onStrike)
+  if (striker) {
+    striker.balls++
+    striker.name = newBatsman.trim()
+    striker.runs = 0
+    striker.balls = 0
+    striker.fours = 0
+    striker.sixes = 0
   }
+  
+  addBall()
   showWicketModal.value = false
 }
 
 const initializeInnings = () => {
   // Validate required fields
-  if (!initForm.value.battingTeam || !initForm.value.bowlingTeam || 
-      !initForm.value.striker || !initForm.value.nonStriker) {
+  if (!initForm.value.battingTeam?.trim() || 
+      !initForm.value.bowlingTeam?.trim() || 
+      !initForm.value.striker?.trim() || 
+      !initForm.value.nonStriker?.trim()) {
     alert('Please fill in all required fields')
     return
   }
 
-  // Update match info
-  matchInfo.value = {
-    battingTeam: initForm.value.battingTeam,
-    bowlingTeam: initForm.value.bowlingTeam,
-    venue: initForm.value.venue,
-    date: new Date().toISOString().split('T')[0],
-    matchType: initForm.value.matchType,
-    targetScore: initForm.value.targetScore ? parseInt(initForm.value.targetScore) : null
+  try {
+    // Update match info
+    matchInfo.value = {
+      battingTeam: initForm.value.battingTeam.trim(),
+      bowlingTeam: initForm.value.bowlingTeam.trim(),
+      venue: initForm.value.venue?.trim() || '',
+      date: new Date().toISOString().split('T')[0],
+      matchType: initForm.value.matchType,
+      targetScore: initForm.value.targetScore ? parseInt(initForm.value.targetScore) : null
+    }
+
+    // Update settings
+    settings.value = {
+      ...settings.value,
+      maxOvers: Math.max(1, parseInt(initForm.value.maxOvers) || 20)
+    }
+
+    // Initialize batsmen
+    batsmen.value = [
+      { 
+        name: initForm.value.striker.trim(), 
+        runs: 0, 
+        balls: 0, 
+        fours: 0, 
+        sixes: 0, 
+        onStrike: true 
+      },
+      { 
+        name: initForm.value.nonStriker.trim(), 
+        runs: 0, 
+        balls: 0, 
+        fours: 0, 
+        sixes: 0, 
+        onStrike: false 
+      }
+    ]
+
+    // Reset game state
+    score.value = 0
+    wickets.value = 0
+    overs.value = 0
+    balls.value = 0
+    extras.wides.value = 0
+    extras.noBalls.value = 0
+    extras.byes.value = 0
+    extras.legByes.value = 0
+    history.value = []
+
+    // Reset current bowler
+    currentBowler.value = {
+      name: '',
+      overs: 0,
+      balls: 0,
+      runs: 0,
+      wickets: 0,
+      maidens: 0,
+      runsInOver: 0
+    }
+
+    showInitModal.value = false
+  } catch (error) {
+    console.error('Error initializing innings:', error)
+    alert('There was an error starting the match. Please try again.')
   }
-
-  // Update settings
-  settings.value.maxOvers = initForm.value.maxOvers
-
-  // Initialize batsmen
-  batsmen.value = [
-    { name: initForm.value.striker, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: true },
-    { name: initForm.value.nonStriker, runs: 0, balls: 0, fours: 0, sixes: 0, onStrike: false }
-  ]
-
-  showInitModal.value = false
 }
 </script>
 
 <template>
-  <!-- Main Scoring Interface -->
-  <div class="scoring-interface">
-    <!-- Primary Score Display -->
-    <div class="score-board">
-      <div class="main-score">
-        <div class="score-wrapper">
-          <span class="runs">{{ score.value }}</span>
-          <span class="divider">/</span>
-          <span class="wickets">{{ wickets.value }}</span>
-          <span class="overs">({{ overs.value }}.{{ balls.value }})</span>
+  <!-- Initial Match Setup Modal -->
+  <div v-if="showInitModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="modal-title">New Match</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Batting Team *</label>
+          <input 
+            v-model="initForm.battingTeam" 
+            type="text" 
+            required
+            class="form-input"
+          >
         </div>
-        <div class="run-rate">
-          <span>CRR: {{ runRate }}</span>
-          <span v-if="requiredRunRate">RRR: {{ requiredRunRate }}</span>
+        <div class="form-group">
+          <label>Bowling Team *</label>
+          <input 
+            v-model="initForm.bowlingTeam" 
+            type="text" 
+            required
+            class="form-input"
+          >
+        </div>
+        <div class="form-group">
+          <label>Striker *</label>
+          <input 
+            v-model="initForm.striker" 
+            type="text" 
+            required
+            class="form-input"
+          >
+        </div>
+        <div class="form-group">
+          <label>Non-striker *</label>
+          <input 
+            v-model="initForm.nonStriker" 
+            type="text" 
+            required
+            class="form-input"
+          >
         </div>
       </div>
-      <div class="target-info" v-if="matchInfo.value.targetScore">
-        <div class="target">Target: {{ matchInfo.value.targetScore }}</div>
-        <div class="needs">Need {{ requiredRuns }} from {{ (settings.value.maxOvers - overs.value - balls.value/6).toFixed(1) }} ov</div>
-      </div>
+      <button 
+        @click="initializeInnings" 
+        class="btn-primary"
+      >
+        Start Match
+      </button>
     </div>
+  </div>
 
-    <!-- Active Players Panel -->
-    <div class="players-panel">
-      <div class="batsmen">
-        <div v-for="batsman in batsmen.value" :key="batsman.name" 
-             :class="['batsman-card', { 'on-strike': batsman.onStrike }]">
-          <div class="player-name">{{ batsman.name || 'Batsman' }}</div>
-          <div class="stats-row">
-            <span class="runs">{{ batsman.runs }}*</span>
-            <span class="balls">({{ batsman.balls }})</span>
-            <span class="boundaries">{{ batsman.fours }}×4 {{ batsman.sixes }}×6</span>
-            <span class="strike-rate">
-              SR: {{ batsman.balls ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0' }}
-            </span>
-          </div>
+  <!-- Main Scoring Interface -->
+  <div v-else class="scorer-container">
+    <!-- Score Display -->
+    <div class="score-board">
+      <h2 class="team-name">{{ matchInfo.battingTeam }}</h2>
+      <div class="score-display">
+        <div class="main-score">
+          <span class="score-value">{{ score }}/{{ wickets }}</span>
+          <span class="overs-value">({{ overs }}.{{ balls }})</span>
         </div>
       </div>
-      <div class="bowler-card" v-if="currentBowler.value.name">
-        <div class="player-name">{{ currentBowler.value.name }}</div>
-        <div class="stats-row">
-          <span>{{ currentBowler.value.overs }}.{{ currentBowler.value.balls }}-{{ currentBowler.value.maidens }}-{{ currentBowler.value.runs }}-{{ currentBowler.value.wickets }}</span>
+      <div class="run-rates">
+        <div class="rate-item">
+          <span>CRR:</span>
+          <span class="rate-value">{{ runRate }}</span>
+        </div>
+        <div v-if="matchInfo.targetScore" class="rate-item">
+          <span>RRR:</span>
+          <span class="rate-value">{{ requiredRunRate }}</span>
+          <span class="target-info">(Need {{ requiredRuns }})</span>
         </div>
       </div>
     </div>
 
     <!-- Scoring Controls -->
-    <div class="scoring-controls">
-      <div class="primary-actions">
-        <div class="runs-grid">
-          <button v-for="runs in [0,1,2,3,4,6]" 
-                  :key="runs"
-                  @click="addRuns(runs)"
-                  :class="['btn-run', {'boundary': runs === 4 || runs === 6}]">
-            {{ runs }}
-          </button>
-        </div>
-        <div class="extras-grid">
-          <button @click="addExtra('wide')" class="btn-extra">Wide</button>
-          <button @click="addExtra('no-ball')" class="btn-extra">No Ball</button>
-          <button @click="addExtra('bye')" class="btn-extra">Bye</button>
-          <button @click="addExtra('leg-bye')" class="btn-extra">Leg Bye</button>
-        </div>
-      </div>
-      <div class="secondary-actions">
-        <button @click="addWicket" class="btn-wicket">
-          <span class="icon">🎯</span>
-          Wicket
-        </button>
-        <button @click="switchStriker" class="btn-switch">
-          <span class="icon">🔄</span>
-          Switch Ends
-        </button>
-        <button @click="undo" class="btn-undo">
-          <span class="icon">↩️</span>
-          Undo
+    <div class="scoring-panel">
+      <div class="runs-grid">
+        <button 
+          v-for="runs in [0,1,2,3,4,6]" 
+          :key="runs"
+          @click="addRuns(runs)"
+          class="score-btn"
+          :class="{ 'boundary': runs === 4 || runs === 6 }"
+        >
+          {{ runs }}
         </button>
       </div>
-    </div>
-  </div>
 
-  <!-- Modals -->
-  <div v-if="showExtraRunsModal" class="modal" @click.self="showExtraRunsModal = false">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h3>{{ extraRunsType === 'bye' ? 'Byes' : 'Leg Byes' }}</h3>
-        <button class="close-btn" @click="showExtraRunsModal = false">×</button>
-      </header>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Select Runs</label>
-          <div class="runs-quick-select">
-            <button 
-              v-for="n in 4" 
-              :key="n" 
-              @click="extraRunsAmount = n"
-              :class="['quick-select-btn', { active: extraRunsAmount === n }]"
-            >
-              {{ n }}
-            </button>
+      <div class="extras-grid">
+        <button @click="addExtra('wide')" class="extra-btn">Wide</button>
+        <button @click="addExtra('no-ball')" class="extra-btn">No Ball</button>
+        <button @click="addExtra('bye')" class="extra-btn">Bye</button>
+        <button @click="addExtra('leg-bye')" class="extra-btn">Leg Bye</button>
+      </div>
+
+      <button @click="addWicket" class="wicket-btn">
+        Wicket
+      </button>
+    </div>
+
+    <!-- Batsmen Info -->
+    <div class="batsmen-panel">
+      <div v-for="(batsman, index) in batsmen" :key="index"
+           :class="['batsman-card', { 'on-strike': batsman.onStrike }]">
+        <div class="batsman-name">{{ batsman.name }}</div>
+        <div class="batsman-stats">
+          <span class="runs">{{ batsman.runs }}</span>
+          <span class="balls">({{ batsman.balls }})</span>
+          <div class="boundaries">
+            <span>4s: {{ batsman.fours }}</span>
+            <span>6s: {{ batsman.sixes }}</span>
           </div>
-          <input 
-            v-model="extraRunsAmount" 
-            type="number" 
-            min="0" 
-            max="6"
-            placeholder="Or enter custom amount"
-          >
         </div>
       </div>
-      <footer class="modal-footer">
-        <button @click="showExtraRunsModal = false" class="btn-secondary">Cancel</button>
-        <button @click="confirmExtraRuns" class="btn-primary">Confirm</button>
-      </footer>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-panel">
+      <button @click="switchStriker" class="action-btn">
+        <i class="fas fa-exchange-alt"></i>
+        Switch Strike
+      </button>
+      <button @click="undo" class="action-btn" :disabled="!history.length">
+        <i class="fas fa-undo"></i>
+        Undo
+      </button>
+      <button @click="exportToCSV" class="action-btn">
+        <i class="fas fa-file-export"></i>
+        Export
+      </button>
+      <button @click="saveMatch" class="action-btn save">
+        <i class="fas fa-save"></i>
+        Save
+      </button>
     </div>
   </div>
 
-  <div v-if="showNewBowlerModal" class="modal" @click.self="showNewBowlerModal = false">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h3>New Bowler</h3>
-        <button class="close-btn" @click="showNewBowlerModal = false">×</button>
-      </header>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Bowler Name</label>
-          <input 
-            v-model="newBowlerName" 
-            type="text" 
-            placeholder="Enter bowler name"
-            @keyup.enter="confirmNewBowler"
-            ref="bowlerInput"
-            class="bowler-input"
-            autocomplete="off"
-          >
-        </div>
+  <!-- Wicket Modal -->
+  <div v-if="showWicketModal" class="modal-overlay">
+    <div class="modal-card wicket-modal">
+      <h3>Wicket</h3>
+      <select v-model="selectedWicketType" class="wicket-select">
+        <option v-for="type in wicketTypes" :key="type" :value="type">
+          {{ type }}
+        </option>
+      </select>
+      <div class="modal-actions">
+        <button @click="showWicketModal = false" class="btn-secondary">Cancel</button>
+        <button @click="addWicket" class="btn-danger">Confirm</button>
       </div>
-      <footer class="modal-footer">
-        <button @click="showNewBowlerModal = false" class="btn-secondary">Cancel</button>
-        <button @click="confirmNewBowler" class="btn-primary">Start Over</button>
-      </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.container {
+/* Modern color scheme */
+:root {
+  --primary: #2563eb;
+  --secondary: #64748b;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --background: #f8fafc;
+  --text: #1e293b;
+  --border: #e2e8f0;
+  --highlight: #3b82f6;
+}
+
+/* Base styles */
+.scorer-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 1.5rem;
+  background: var(--background);
 }
 
-.score-display {
+/* Score board styles */
+.score-board {
+  background: linear-gradient(135deg, #1e40af, #1d4ed8);
+  color: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.team-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.main-score {
+  font-size: 3rem;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.score-value {
+  margin-right: 1rem;
+}
+
+.overs-value {
   font-size: 2rem;
-  font-weight: bold;
-  text-align: center;
-  margin: 1rem 0;
+  opacity: 0.9;
 }
 
-.controls {
+.run-rates {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+  font-size: 1.2rem;
+}
+
+/* Control buttons */
+.scoring-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
+  gap: 1.5rem;
+  margin: 2rem 0;
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
+.runs-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+}
+
+.score-btn {
+  padding: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
+  border-radius: 0.75rem;
+  background: white;
+  color: var(--text);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
 }
 
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.btn-primary {
-  background-color: #007bff;
+.score-btn.boundary {
+  background: var(--highlight);
   color: white;
 }
 
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
+.extras-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
 }
 
-.btn-danger {
-  background-color: #dc3545;
+.extra-btn {
+  padding: 1rem;
+  font-size: 1.2rem;
+  background: var(--secondary);
   color: white;
+  border: none;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
 }
 
-.modal {
-  background: rgba(0,0,0,0.5);
+.wicket-btn {
+  padding: 1.25rem;
+  font-size: 1.3rem;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+
+/* Batsmen display */
+.batsmen-panel {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.batsman-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.batsman-card.on-strike {
+  border: 2px solid var(--highlight);
+}
+
+/* Modal styles */
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
 }
 
-.modal-content {
+.modal-card {
   background: white;
   padding: 2rem;
-  border-radius: 8px;
-  min-width: 300px;
+  border-radius: 1rem;
+  min-width: 400px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-}
-
-.stats-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-}
-
-.stats-table th,
-.stats-table td {
-  padding: 0.75rem;
-  border: 1px solid #dee2e6;
-  text-align: left;
-}
-
-.stats-table th {
-  background-color: #f8f9fa;
-}
-
+/* Responsive design */
 @media (max-width: 768px) {
-  .controls {
+  .runs-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .extras-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .batsmen-panel {
     grid-template-columns: 1fr;
   }
   
-  .btn {
-    width: 100%;
-  }
-}
-
-.runs-quick-select {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.quick-select-btn {
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-background-soft);
-  cursor: pointer;
-}
-
-.quick-select-btn.active {
-  background: var(--color-heading);
-  color: white;
-  border-color: var(--color-heading);
-}
-
-.modal-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .modal-content {
-    margin: 1rem;
-    max-width: calc(100% - 2rem);
-  }
-
-  .quick-select-btn {
-    padding: 1rem;
-    font-size: 1.2rem;
-  }
-
-  input[type="number"] {
-    font-size: 1.2rem;
-    padding: 0.8rem;
+  .score-btn {
+    padding: 1.25rem;
+    font-size: 1.25rem;
   }
 }
 </style>
