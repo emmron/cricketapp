@@ -320,92 +320,212 @@ const confirmWicket = () => {
 </template>
 
 <style scoped>
-/* Previous styles remain the same */
-
-/* Enhanced Modal Styles */
+/* Modal Styles */
 .modal-content {
-  background: #1a1a1a;
-  color: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  color: #0f172a;
+  padding: 3rem;
+  border-radius: 2rem;
+  width: 95%;
+  max-width: 650px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 8px 24px -4px rgba(0, 0, 0, 0.15),
+    inset 0 2px 4px 0 rgba(255, 255, 255, 0.95);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.98);
+  z-index: 1000;
+  border: 1px solid rgba(255,255,255,0.7);
+  backdrop-filter: blur(16px);
+  animation: modalPop 0.3s ease forwards;
+}
+
+@keyframes modalPop {
+  0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 .modal-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #fff;
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  letter-spacing: -1px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.modal-title::after {
+  content: '';
+  position: absolute;
+  bottom: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 6px;
+  background: linear-gradient(to right, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .wicket-form {
   display: grid;
-  gap: 1.25rem;
+  gap: 2.5rem;
 }
 
 .form-group {
   display: grid;
-  gap: 0.5rem;
+  gap: 1rem;
+  position: relative;
+  animation: slideUp 0.4s ease forwards;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .form-label {
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .modal-select,
 .modal-input {
-  background: #333;
-  color: #fff;
-  border: 1px solid #666;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border: 3px solid #e2e8f0;
+  padding: 1.25rem 1.5rem;
+  border-radius: 1.25rem;
   width: 100%;
+  font-size: 1.2rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+}
+
+.modal-select:hover,
+.modal-input:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.15);
+}
+
+.modal-select:focus,
+.modal-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 
+    0 0 0 4px rgba(59, 130, 246, 0.25),
+    0 8px 16px rgba(0,0,0,0.1);
+  background: #ffffff;
+  transform: translateY(-3px);
 }
 
 .radio-group {
   display: flex;
-  gap: 1.5rem;
+  gap: 3rem;
+  padding: 1rem 0;
 }
 
 .radio-group label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.radio-group label:hover {
+  background: rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 1.5rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 3px solid rgba(226, 232, 240, 0.8);
 }
 
 .modal-btn {
-  padding: 0.75rem 1.5rem;
+  padding: 1.25rem 2.5rem;
   border: none;
-  border-radius: 0.5rem;
-  font-weight: 500;
+  border-radius: 1.25rem;
+  font-weight: 700;
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.modal-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
 }
 
 .cancel-btn {
-  background: #4b5563;
-  color: #fff;
+  background: linear-gradient(135deg, #64748b, #475569);
+  color: #ffffff;
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(135deg, #475569, #334155);
 }
 
 .confirm-btn {
-  background: #2563eb;
-  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
 }
 
 .confirm-btn:disabled {
-  background: #64748b;
+  background: linear-gradient(135deg, #94a3b8, #64748b);
   cursor: not-allowed;
+  transform: none;
+  opacity: 0.7;
+  box-shadow: none;
 }
 
-/* Rest of the styles remain the same */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 </style>
