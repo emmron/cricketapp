@@ -1,20 +1,33 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+// Add error logging utility
+const logError = (context, error) => {
+  console.error(`[CricketScorer] ${context}:`, error)
+  return false
+}
+
 // Core state management using immutable state pattern
-const createInitialState = () => ({
-  score: ref(0),
-  wickets: ref(0), 
-  overs: ref(0),
-  balls: ref(0),
-  extras: {
-    wides: ref(0),
-    noBalls: ref(0),
-    byes: ref(0), 
-    legByes: ref(0)
-  },
-  history: ref([])
-})
+const createInitialState = () => {
+  try {
+    return {
+      score: ref(0),
+      wickets: ref(0),
+      overs: ref(0),
+      balls: ref(0),
+      extras: {
+        wides: ref(0),
+        noBalls: ref(0),
+        byes: ref(0),
+        legByes: ref(0)
+      },
+      history: ref([])
+    }
+  } catch (err) {
+    logError('Failed to create initial state', err)
+    throw new Error('Game initialization failed')
+  }
+}
 
 // Player state management using entity pattern
 const createBatsman = (isOnStrike = false) => ({
@@ -102,6 +115,54 @@ const gameState = (() => {
 const batsmen = ref([createBatsman(true), createBatsman(false)])
 const currentBowler = ref(createBowler())
 
+// Add validation computed properties
+const validators = {
+  canTakeWicket: computed(() => {
+    try {
+      return (
+        gameState.wickets.value < matchConfig.settings.value.maxWickets &&
+        batsmen.value.some(b => b.name) &&
+        !WicketCommand.state.value.showModal &&
+        currentBowler.value?.name
+      )
+    } catch (err) {
+      logError('Wicket validation failed', err)
+      return false
+    }
+  }),
+
+  isDetailsValid: computed(() => {
+    try {
+      const details = WicketCommand.state.value.details
+      if (!details.type || !details.newBatsman?.trim()) return false
+
+      const validations = {
+        caught: () => details.fielder?.trim() && currentBowler.value.name,
+        runout: () => details.fielder?.trim(),
+        stumped: () => details.fielder?.trim() && currentBowler.value.name,
+        bowled: () => currentBowler.value.name,
+        lbw: () => currentBowler.value.name,
+        hitwicket: () => currentBowler.value.name,
+        retired: () => true
+      }
+
+      return validations[details.type]?.() ?? false
+    } catch (err) {
+      logError('Details validation failed', err) 
+      return false
+    }
+  })
+}
+
+// Add debugging helpers
+const DEBUG = process.env.NODE_ENV !== 'production'
+
+const debugLog = (...args) => {
+  if (DEBUG) {
+    console.log('[CricketScorer]', ...args)
+  }
+}
+
 // Wicket handling using command pattern with error boundaries
 const WicketCommand = {
   state: ref({
@@ -121,72 +182,35 @@ const WicketCommand = {
     }
   }),
 
-  validators: {
-    canTakeWicket: computed(() => {
-      return (
-        gameState.wickets.value < matchConfig.settings.value.maxWickets &&
-        batsmen.value.some(b => b.name) &&
-        !WicketCommand.state.value.showModal &&
-        currentBowler.value?.name
-      )
-    }),
-
-    isDetailsValid: computed(() => {
-      const details = WicketCommand.state.value.details
-      if (!details.type || !details.newBatsman?.trim()) return false
-
-      const validations = {
-        caught: () => details.fielder?.trim() && currentBowler.value.name,
-        runout: () => details.fielder?.trim(),
-        stumped: () => details.fielder?.trim() && currentBowler.value.name,
-        bowled: () => currentBowler.value.name,
-        lbw: () => currentBowler.value.name,
-        hitwicket: () => currentBowler.value.name,
-        retired: () => true
-      }
-
-      return validations[details.type]?.() ?? false
-    })
-  },
-
   execute: {
     add() {
-      if (!this.validators.canTakeWicket.value) {
-        console.warn('Cannot take wicket: validation failed')
-        return false
+      debugLog('Adding wicket')
+      if (!validators.canTakeWicket.value) {
+        return logError('Cannot take wicket: validation failed')
       }
 
       try {
         // Save state for undo with timestamp
+        const currentState = {
+          gameState: { ...gameState },
+          batsmen: [...batsmen.value],
+          bowler: { ...currentBowler.value }
+        }
+        
+        debugLog('Saving current state', currentState)
+        
         gameState.history.value.push({
           timestamp: new Date().toISOString(),
-          state: JSON.stringify({
-            gameState: { ...gameState },
-            batsmen: [...batsmen.value],
-            bowler: { ...currentBowler.value }
-          })
+          state: JSON.stringify(currentState)
         })
 
         this.state.value = {
           showModal: true,
-          details: {
-            type: '',
-            fielder: '',
-            newBatsman: '',
-            bowler: currentBowler.value?.name || '',
-            batsmanOut: batsmen.value.find(b => b.onStrike),
-            runsOnDismissal: 0,
-            ballCount: true,
-            isStriker: true,
-            additionalRuns: 0,
-            timestamp: new Date().toISOString(),
-            reviewTaken: false
-          }
+          details: this.getInitialDetails()
         }
         return true
       } catch (err) {
-        console.error('Failed to add wicket:', err)
-        return false
+        return logError('Failed to add wicket', err)
       }
     },
 
@@ -209,7 +233,7 @@ const WicketCommand = {
     },
 
     confirm() {
-      if (!this.validators.isDetailsValid.value) {
+      if (!validators.isDetailsValid.value) {
         console.warn('Invalid wicket details')
         return false
       }
