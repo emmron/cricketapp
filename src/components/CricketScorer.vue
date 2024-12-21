@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 // Core game state
 const score = ref(0)
@@ -339,16 +339,14 @@ const initializeInnings = () => {
     extras.legByes.value = 0
     history.value = []
 
-    // Reset current bowler
-    currentBowler.value = {
-      name: '',
-      overs: 0,
-      balls: 0,
-      runs: 0,
-      wickets: 0,
-      maidens: 0,
-      runsInOver: 0
-    }
+    // Reset current bowler stats
+    currentBowler.value.name = ''
+    currentBowler.value.overs = 0
+    currentBowler.value.balls = 0
+    currentBowler.value.runs = 0
+    currentBowler.value.wickets = 0
+    currentBowler.value.maidens = 0
+    currentBowler.value.runsInOver = 0
 
     showInitModal.value = false
   } catch (error) {
@@ -356,6 +354,52 @@ const initializeInnings = () => {
     alert('There was an error starting the match. Please try again.')
   }
 }
+
+onMounted(() => {
+  // Load saved state from localStorage
+  const savedState = localStorage.getItem('cricketScorer')
+  if (savedState) {
+    const state = JSON.parse(savedState)
+    score.value = state.score
+    wickets.value = state.wickets
+    overs.value = state.overs
+    balls.value = state.balls
+    extras.wides.value = state.extras.wides
+    extras.noBalls.value = state.extras.noBalls
+    extras.byes.value = state.extras.byes
+    extras.legByes.value = state.extras.legByes
+    batsmen.value = state.batsmen
+    currentBowler.value = state.currentBowler
+    matchInfo.value = state.matchInfo
+    settings.value = state.settings
+    history.value = state.history
+  }
+})
+
+// Add watchers to persist state
+watch(
+  [score, wickets, overs, balls, extras, batsmen, currentBowler, matchInfo, settings, history],
+  () => {
+    localStorage.setItem('cricketScorer', JSON.stringify({
+      score: score.value,
+      wickets: wickets.value,
+      overs: overs.value,
+      balls: balls.value,
+      extras: {
+        wides: extras.wides.value,
+        noBalls: extras.noBalls.value,
+        byes: extras.byes.value,
+        legByes: extras.legByes.value
+      },
+      batsmen: batsmen.value,
+      currentBowler: currentBowler.value,
+      matchInfo: matchInfo.value,
+      settings: settings.value,
+      history: history.value
+    }))
+  },
+  { deep: true }
+)
 </script>
 
 <template>
