@@ -33,3 +33,41 @@ a,
     padding: 0 2rem;
   }
 }
+
+/* Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Loading state */
+#app:empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #1a1a1a;
+}
+
+#app:empty::after {
+  content: "Loading...";
+  color: #00843D;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1.5rem;
+}
+
+/* Base styles */
+:root {
+  --primary: #00843D;
+  --background: #1a1a1a;
+  --text: #ffffff;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+}
