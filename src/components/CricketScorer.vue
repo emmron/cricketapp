@@ -360,8 +360,8 @@ const initializeInnings = () => {
 
 <template>
   <!-- Initial Match Setup Modal -->
-  <div v-if="showInitModal" class="modal-overlay">
-    <div class="modal-card">
+  <div v-if="showInitModal" class="modal-overlay" style="background: rgba(0,0,0,0.8)">
+    <div class="modal-card" style="background: #1a1a1a; color: #fff">
       <h2 class="modal-title">New Match</h2>
       <div class="form-grid">
         <div class="form-group">
@@ -370,7 +370,8 @@ const initializeInnings = () => {
             v-model="initForm.battingTeam" 
             type="text" 
             required
-            class="form-input"
+            style="background: #333; color: #fff; border: 1px solid #666; padding: 8px"
+            placeholder="Enter batting team name"
           >
         </div>
         <div class="form-group">
@@ -379,7 +380,8 @@ const initializeInnings = () => {
             v-model="initForm.bowlingTeam" 
             type="text" 
             required
-            class="form-input"
+            style="background: #333; color: #fff; border: 1px solid #666; padding: 8px"
+            placeholder="Enter bowling team name"
           >
         </div>
         <div class="form-group">
@@ -388,7 +390,8 @@ const initializeInnings = () => {
             v-model="initForm.striker" 
             type="text" 
             required
-            class="form-input"
+            style="background: #333; color: #fff; border: 1px solid #666; padding: 8px"
+            placeholder="Enter striker's name"
           >
         </div>
         <div class="form-group">
@@ -397,13 +400,14 @@ const initializeInnings = () => {
             v-model="initForm.nonStriker" 
             type="text" 
             required
-            class="form-input"
+            style="background: #333; color: #fff; border: 1px solid #666; padding: 8px"
+            placeholder="Enter non-striker's name"
           >
         </div>
       </div>
       <button 
         @click="initializeInnings" 
-        class="btn-primary"
+        style="background: #2563eb; color: #fff; padding: 10px 20px; border: none; border-radius: 4px"
       >
         Start Match
       </button>
@@ -411,9 +415,9 @@ const initializeInnings = () => {
   </div>
 
   <!-- Main Scoring Interface -->
-  <div v-else class="scorer-container">
+  <div v-else class="scorer-container" style="background: #1a1a1a; color: #fff">
     <!-- Score Display -->
-    <div class="score-board">
+    <div class="score-board" style="background: linear-gradient(135deg, #1e40af, #1d4ed8); color: #fff">
       <h2 class="team-name">{{ matchInfo.battingTeam }}</h2>
       <div class="score-display">
         <div class="main-score">
@@ -435,27 +439,31 @@ const initializeInnings = () => {
     </div>
 
     <!-- Scoring Controls -->
-    <div class="scoring-panel">
+    <div class="scoring-panel" style="background: #262626; padding: 20px; border-radius: 8px">
       <div class="runs-grid">
         <button 
           v-for="runs in [0,1,2,3,4,6]" 
           :key="runs"
           @click="addRuns(runs)"
-          class="score-btn"
-          :class="{ 'boundary': runs === 4 || runs === 6 }"
+          style="background: #333; color: #fff; padding: 15px; border: none; border-radius: 4px"
+          :style="runs === 4 || runs === 6 ? 'background: #2563eb' : ''"
         >
           {{ runs }}
         </button>
       </div>
 
       <div class="extras-grid">
-        <button @click="addExtra('wide')" class="extra-btn">Wide</button>
-        <button @click="addExtra('no-ball')" class="extra-btn">No Ball</button>
-        <button @click="addExtra('bye')" class="extra-btn">Bye</button>
-        <button @click="addExtra('leg-bye')" class="extra-btn">Leg Bye</button>
+        <button 
+          v-for="extra in ['Wide', 'No Ball', 'Bye', 'Leg Bye']" 
+          :key="extra"
+          @click="addExtra(extra.toLowerCase())"
+          style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px"
+        >
+          {{ extra }}
+        </button>
       </div>
 
-      <button @click="addWicket" class="wicket-btn">
+      <button @click="addWicket" style="background: #dc2626; color: #fff; padding: 12px; width: 100%; border: none; border-radius: 4px">
         Wicket
       </button>
     </div>
@@ -463,13 +471,14 @@ const initializeInnings = () => {
     <!-- Batsmen Info -->
     <div class="batsmen-panel">
       <div v-for="(batsman, index) in batsmen" :key="index"
-           :class="['batsman-card', { 'on-strike': batsman.onStrike }]">
-        <div class="batsman-name">{{ batsman.name }}</div>
-        <div class="batsman-stats">
-          <span class="runs">{{ batsman.runs }}</span>
-          <span class="balls">({{ batsman.balls }})</span>
-          <div class="boundaries">
-            <span>4s: {{ batsman.fours }}</span>
+           style="background: #262626; padding: 15px; border-radius: 8px; margin: 10px 0"
+           :style="batsman.onStrike ? 'border: 2px solid #2563eb' : ''">
+        <div style="font-weight: bold">{{ batsman.name }}</div>
+        <div style="display: flex; gap: 10px; margin-top: 8px">
+          <span style="font-size: 1.2em">{{ batsman.runs }}</span>
+          <span style="color: #999">({{ batsman.balls }})</span>
+          <div style="margin-left: auto">
+            <span style="margin-right: 10px">4s: {{ batsman.fours }}</span>
             <span>6s: {{ batsman.sixes }}</span>
           </div>
         </div>
@@ -477,20 +486,20 @@ const initializeInnings = () => {
     </div>
 
     <!-- Action Buttons -->
-    <div class="action-panel">
-      <button @click="switchStriker" class="action-btn">
+    <div class="action-panel" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px">
+      <button @click="switchStriker" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
         <i class="fas fa-exchange-alt"></i>
         Switch Strike
       </button>
-      <button @click="undo" class="action-btn" :disabled="!history.length">
+      <button @click="undo" :disabled="!history.length" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
         <i class="fas fa-undo"></i>
         Undo
       </button>
-      <button @click="exportToCSV" class="action-btn">
+      <button @click="exportToCSV" style="background: #404040; color: #fff; padding: 10px; border: none; border-radius: 4px">
         <i class="fas fa-file-export"></i>
         Export
       </button>
-      <button @click="saveMatch" class="action-btn save">
+      <button @click="saveMatch" style="background: #16a34a; color: #fff; padding: 10px; border: none; border-radius: 4px">
         <i class="fas fa-save"></i>
         Save
       </button>
@@ -498,17 +507,17 @@ const initializeInnings = () => {
   </div>
 
   <!-- Wicket Modal -->
-  <div v-if="showWicketModal" class="modal-overlay">
-    <div class="modal-card wicket-modal">
+  <div v-if="showWicketModal" class="modal-overlay" style="background: rgba(0,0,0,0.8)">
+    <div class="modal-card" style="background: #1a1a1a; color: #fff; padding: 20px; border-radius: 8px">
       <h3>Wicket</h3>
-      <select v-model="selectedWicketType" class="wicket-select">
+      <select v-model="selectedWicketType" style="background: #333; color: #fff; padding: 8px; width: 100%; margin: 10px 0">
         <option v-for="type in wicketTypes" :key="type" :value="type">
           {{ type }}
         </option>
       </select>
-      <div class="modal-actions">
-        <button @click="showWicketModal = false" class="btn-secondary">Cancel</button>
-        <button @click="addWicket" class="btn-danger">Confirm</button>
+      <div style="display: flex; gap: 10px; justify-content: flex-end">
+        <button @click="showWicketModal = false" style="background: #404040; color: #fff; padding: 8px 16px; border: none; border-radius: 4px">Cancel</button>
+        <button @click="addWicket" style="background: #dc2626; color: #fff; padding: 8px 16px; border: none; border-radius: 4px">Confirm</button>
       </div>
     </div>
   </div>
