@@ -3,16 +3,33 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Scorer</title>
+    <title>OZ Crickets - Cricket Scoring App</title>
+    
+    <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#00843D">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Australian Cricket Scoring Application - Track live cricket matches with ease">
+    <meta name="keywords" content="cricket, scoring, australia, cricket scoring app, cricket statistics">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="OZ Crickets - Cricket Scoring App">
+    <meta property="og:description" content="Australian Cricket Scoring Application - Track live cricket matches with ease">
+    <meta property="og:image" content="/icons/icon-512x512.png">
+    <meta property="og:url" content="https://ozcrickets.com">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
   </head>
   <body>
     <div id="app"></div>
     <script>
+      // Register service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
@@ -20,10 +37,18 @@
               console.log('ServiceWorker registration successful');
             })
             .catch(err => {
-              console.log('ServiceWorker registration failed: ', err);
+              console.error('ServiceWorker registration failed: ', err);
             });
         });
       }
+
+      // Add to homescreen prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show your custom install prompt here if desired
+      });
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

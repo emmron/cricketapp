@@ -1,10 +1,13 @@
-const CACHE_NAME = 'cricket-scorer-v1';
+const CACHE_NAME = 'ozcrickets-v1';
+const DOMAIN = 'ozcrickets.com';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
+  '/assets/styles.css',
+  '/assets/main.js'
 ];
 
 self.addEventListener('install', event => {
@@ -15,26 +18,28 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request)
-          .then(response => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
+  if (event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => {
+          if (response) {
             return response;
-          });
-      })
-  );
+          }
+          return fetch(event.request)
+            .then(response => {
+              if (!response || response.status !== 200 || response.type !== 'basic') {
+                return response;
+              }
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME)
+                .then(cache => {
+                  cache.put(event.request, responseToCache);
+                });
+              return response;
+            });
+        })
+    );
+  }
 });
 
 self.addEventListener('activate', event => {
@@ -49,4 +54,18 @@ self.addEventListener('activate', event => {
       );
     })
   );
+});
+
+self.addEventListener('fetch', event => {
+  if (!navigator.onLine) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => {
+          if (response) {
+            return response;
+          }
+          return caches.match('/offline.html');
+        })
+    );
+  }
 }); 
