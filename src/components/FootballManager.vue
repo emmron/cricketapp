@@ -3146,5 +3146,4 @@ h3.negative {
   color: #1e3c72;
   font-weight: 700;
 }
-}
 </style>
