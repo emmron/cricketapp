@@ -10,31 +10,51 @@ const teamName = ref('Melbourne Demons')
 const budget = ref(50000000)
 const reputation = ref(50)
 
-// Squad with realistic player stats
+// Board & Job Security
+const boardExpectations = ref({
+  targetPosition: 8, // Finish in top 8 (finals)
+  minimumPosition: 12, // Don't finish bottom 4
+  jobSecurity: 75, // Out of 100
+  boardConfidence: 'Stable',
+  pressureLevel: 'Medium'
+})
+
+// Tactics & Formation
+const tactics = ref({
+  formation: 'Balanced', // Balanced, Attacking, Defensive
+  playingStyle: 'Possession', // Possession, Counter-Attack, Direct
+  tempo: 'Medium', // Slow, Medium, Fast
+  pressing: 'Medium' // Low, Medium, High
+})
+
+// Opposition scouting
+const scoutReports = ref({}) // { opponentName: { strengths: [], weaknesses: [], rating: 0 } }
+
+// Squad with Football Manager-level detail
 const squad = ref([
   // Full Forwards
-  { id: 1, name: 'Jack Mitchell', position: 'FF', overall: 89, age: 26, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 2, name: 'Tom Brown', position: 'FF', overall: 83, age: 29, value: 32000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 1, name: 'Jack Mitchell', position: 'FF', overall: 89, age: 26, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 85, form: 7.0, formHistory: [7.0], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 95, attributes: { pace: 88, marking: 90, kicking: 87, endurance: 85 } },
+  { id: 2, name: 'Tom Brown', position: 'FF', overall: 83, age: 29, value: 32000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 80, form: 6.8, formHistory: [6.8], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 92, attributes: { pace: 82, marking: 85, kicking: 83, endurance: 84 } },
 
   // Half Forwards
-  { id: 3, name: 'Luke Petracca', position: 'CHF', overall: 87, age: 27, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 4, name: 'Charlie Cameron', position: 'HFF', overall: 85, age: 28, value: 48000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 5, name: 'Toby Greene', position: 'HFF', overall: 84, age: 30, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 3, name: 'Luke Petracca', position: 'CHF', overall: 87, age: 27, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 88, form: 7.2, formHistory: [7.2], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 94, attributes: { pace: 85, marking: 88, kicking: 89, endurance: 86 } },
+  { id: 4, name: 'Charlie Cameron', position: 'HFF', overall: 85, age: 28, value: 48000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 82, form: 7.0, formHistory: [7.0], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 93, attributes: { pace: 92, marking: 82, kicking: 84, endurance: 87 } },
+  { id: 5, name: 'Toby Greene', position: 'HFF', overall: 84, age: 30, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 79, form: 6.9, formHistory: [6.9], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 90, attributes: { pace: 83, marking: 84, kicking: 86, endurance: 82 } },
 
   // Midfield / Ruck
-  { id: 6, name: 'Max Gawn', position: 'RK', overall: 88, age: 31, value: 50000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 7, name: 'Patrick Cripps', position: 'C', overall: 90, age: 28, value: 70000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 8, name: 'Clayton Oliver', position: 'RV', overall: 88, age: 26, value: 60000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 9, name: 'Marcus Bontempelli', position: 'RR', overall: 89, age: 28, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 10, name: 'Lachie Neale', position: 'W', overall: 87, age: 30, value: 58000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 11, name: 'Andrew McGrath', position: 'W', overall: 84, age: 26, value: 45000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 6, name: 'Max Gawn', position: 'RK', overall: 88, age: 31, value: 50000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 90, form: 7.4, formHistory: [7.4], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 89, attributes: { pace: 75, marking: 92, kicking: 84, endurance: 88 } },
+  { id: 7, name: 'Patrick Cripps', position: 'C', overall: 90, age: 28, value: 70000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 92, form: 7.8, formHistory: [7.8], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 96, attributes: { pace: 86, marking: 88, kicking: 90, endurance: 92 } },
+  { id: 8, name: 'Clayton Oliver', position: 'RV', overall: 88, age: 26, value: 60000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 87, form: 7.3, formHistory: [7.3], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 95, attributes: { pace: 84, marking: 86, kicking: 88, endurance: 90 } },
+  { id: 9, name: 'Marcus Bontempelli', position: 'RR', overall: 89, age: 28, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 89, form: 7.5, formHistory: [7.5], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 94, attributes: { pace: 87, marking: 89, kicking: 91, endurance: 88 } },
+  { id: 10, name: 'Lachie Neale', position: 'W', overall: 87, age: 30, value: 58000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 84, form: 7.1, formHistory: [7.1], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 92, attributes: { pace: 85, marking: 84, kicking: 89, endurance: 91 } },
+  { id: 11, name: 'Andrew McGrath', position: 'W', overall: 84, age: 26, value: 45000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 81, form: 6.9, formHistory: [6.9], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 93, attributes: { pace: 86, marking: 82, kicking: 84, endurance: 87 } },
 
   // Defenders
-  { id: 12, name: 'Steven May', position: 'FB', overall: 86, age: 31, value: 40000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 13, name: 'Jake Lever', position: 'CHB', overall: 85, age: 28, value: 38000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 14, name: 'Nick Daicos', position: 'HBF', overall: 88, age: 21, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 15, name: 'Bailey Smith', position: 'HBF', overall: 83, age: 23, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false },
-  { id: 16, name: 'Sam Taylor', position: 'FB', overall: 82, age: 25, value: 35000000, goals: 0, behinds: 0, matches: 0, injured: false }
+  { id: 12, name: 'Steven May', position: 'FB', overall: 86, age: 31, value: 40000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 83, form: 7.0, formHistory: [7.0], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 91, attributes: { pace: 78, marking: 91, kicking: 82, endurance: 85 } },
+  { id: 13, name: 'Jake Lever', position: 'CHB', overall: 85, age: 28, value: 38000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 86, form: 7.1, formHistory: [7.1], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 93, attributes: { pace: 82, marking: 88, kicking: 83, endurance: 86 } },
+  { id: 14, name: 'Nick Daicos', position: 'HBF', overall: 88, age: 21, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 91, form: 7.6, formHistory: [7.6], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 97, attributes: { pace: 90, marking: 86, kicking: 92, endurance: 89 } },
+  { id: 15, name: 'Bailey Smith', position: 'HBF', overall: 83, age: 23, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 80, form: 6.8, formHistory: [6.8], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 94, attributes: { pace: 88, marking: 81, kicking: 82, endurance: 90 } },
+  { id: 16, name: 'Sam Taylor', position: 'FB', overall: 82, age: 25, value: 35000000, goals: 0, behinds: 0, matches: 0, injured: false, injuryDaysRemaining: 0, morale: 78, form: 6.7, formHistory: [6.7], yellowCards: 0, redCards: 0, suspended: false, suspensionDaysRemaining: 0, fitness: 92, attributes: { pace: 80, marking: 86, kicking: 79, endurance: 84 } }
 ])
 
 // Match state
@@ -768,10 +788,59 @@ const nextMatch = computed(() => {
 const simulateDay = () => {
   calendar.value.currentDay++
 
+  // Update player states - Football Manager style
+  squad.value.forEach(player => {
+    // Injury recovery
+    if (player.injuryDaysRemaining > 0) {
+      player.injuryDaysRemaining--
+      if (player.injuryDaysRemaining === 0) {
+        player.injured = false
+        addInboxMessage({
+          from: 'Medical Team',
+          subject: `${player.name} Returns from Injury`,
+          message: `Good news! ${player.name} has fully recovered and is available for selection.`,
+          type: 'news'
+        })
+      }
+    }
+
+    // Suspension countdown
+    if (player.suspensionDaysRemaining > 0) {
+      player.suspensionDaysRemaining--
+      if (player.suspensionDaysRemaining === 0) {
+        player.suspended = false
+        addInboxMessage({
+          from: 'Competition',
+          subject: `${player.name} Suspension Served`,
+          message: `${player.name} has served their suspension and is now available for selection.`,
+          type: 'news'
+        })
+      }
+    }
+
+    // Fitness recovery (when not injured)
+    if (!player.injured && player.fitness < 100) {
+      player.fitness = Math.min(100, player.fitness + 2)
+    }
+
+    // Morale changes (drift towards 75 naturally)
+    if (player.morale > 75) {
+      player.morale = Math.max(75, player.morale - 1)
+    } else if (player.morale < 75) {
+      player.morale = Math.min(75, player.morale + 1)
+    }
+  })
+
   // Check if there's a match today
   const todayMatch = fixtures.value.find(f => f.day === calendar.value.currentDay && !f.played)
 
   if (todayMatch) {
+    // Generate scout report if not exists
+    const opponent = todayMatch.homeTeam === teamName.value ? todayMatch.awayTeam : todayMatch.homeTeam
+    if (!scoutReports.value[opponent]) {
+      generateScoutReport(opponent)
+    }
+
     // Auto-play the match
     const isHome = todayMatch.homeTeam === teamName.value
     currentMatch.value.isHome = isHome
@@ -799,6 +868,9 @@ const simulateDay = () => {
   // Update current round
   calendar.value.currentRound = Math.ceil(calendar.value.currentDay / calendar.value.daysPerRound)
 
+  // Update board confidence based on league position
+  updateBoardConfidence()
+
   // Generate news occasionally
   if (Math.random() < 0.1) {
     generateRandomNews()
@@ -821,30 +893,52 @@ const simulateWeek = () => {
 
 const applyTraining = () => {
   const intensityBonus = {
-    low: 0.1,
-    medium: 0.2,
-    high: 0.3
+    low: 0.05,
+    medium: 0.1,
+    high: 0.15
   }
 
   const bonus = intensityBonus[training.value.intensity]
 
   squad.value.forEach(player => {
-    if (!player.injured && Math.random() < bonus) {
-      // Small chance to improve overall rating
-      if (player.overall < 95) {
-        player.overall += 1
+    if (!player.injured && !player.suspended && player.fitness > 80) {
+      // Attribute improvements based on training focus
+      if (Math.random() < bonus) {
+        switch (training.value.focus) {
+          case 'attack':
+            if (player.attributes.kicking < 99) player.attributes.kicking++
+            break
+          case 'defense':
+            if (player.attributes.marking < 99) player.attributes.marking++
+            break
+          case 'fitness':
+            if (player.attributes.endurance < 99) player.attributes.endurance++
+            if (player.attributes.pace < 99) player.attributes.pace++
+            break
+          case 'balanced':
+            // Small chance to improve random attribute
+            const attrs = ['pace', 'marking', 'kicking', 'endurance']
+            const attr = attrs[Math.floor(Math.random() * attrs.length)]
+            if (player.attributes[attr] < 99) player.attributes[attr]++
+            break
+        }
+
+        // Update overall based on attributes
+        player.overall = Math.floor(
+          (player.attributes.pace + player.attributes.marking +
+           player.attributes.kicking + player.attributes.endurance) / 4
+        )
+      }
+
+      // Morale boost from good training
+      if (Math.random() < 0.1) {
+        player.morale = Math.min(100, player.morale + 2)
       }
     }
 
-    // Heal injuries over time
-    if (player.injured && Math.random() < 0.15) {
-      player.injured = false
-      addInboxMessage({
-        from: 'Medical Team',
-        subject: `${player.name} Returns from Injury`,
-        message: `Good news! ${player.name} has recovered from injury and is available for selection.`,
-        type: 'news'
-      })
+    // Fitness drain from high intensity training
+    if (training.value.intensity === 'high' && !player.injured) {
+      player.fitness = Math.max(70, player.fitness - 5)
     }
   })
 }
@@ -854,28 +948,48 @@ const generateRandomEvent = () => {
     () => {
       // Random player form boost
       const player = squad.value[Math.floor(Math.random() * squad.value.length)]
+      player.form = Math.min(10, player.form + 0.3)
+      player.morale = Math.min(100, player.morale + 5)
       addInboxMessage({
         from: 'Performance Analysis',
         subject: `${player.name} Showing Great Form`,
-        message: `${player.name} has been impressive in training this week! The coaching staff are very pleased.`,
+        message: `${player.name} has been impressive in training this week! Form: ${player.form.toFixed(1)}/10`,
         type: 'news'
       })
     },
     () => {
-      // Minor injury (10% chance)
+      // Training injury (10% chance)
       if (Math.random() < 0.1) {
-        const healthyPlayers = squad.value.filter(p => !p.injured)
+        const healthyPlayers = squad.value.filter(p => !p.injured && !p.suspended)
         if (healthyPlayers.length > 0) {
           const player = healthyPlayers[Math.floor(Math.random() * healthyPlayers.length)]
+          const injuryDays = Math.floor(Math.random() * 14) + 7 // 7-21 days
           player.injured = true
+          player.injuryDaysRemaining = injuryDays
+          player.morale = Math.max(40, player.morale - 10)
+
+          const injuryTypes = ['hamstring', 'knee', 'ankle', 'shoulder', 'back', 'calf']
+          const injuryType = injuryTypes[Math.floor(Math.random() * injuryTypes.length)]
+
           addInboxMessage({
             from: 'Medical Team',
             subject: `Injury Update: ${player.name}`,
-            message: `Unfortunately, ${player.name} picked up an injury in training. Expected to be out for 1-2 weeks.`,
+            message: `Unfortunately, ${player.name} has sustained a ${injuryType} injury in training. Expected return: ${injuryDays} days.`,
             type: 'news'
           })
         }
       }
+    },
+    () => {
+      // Morale event - player unhappy
+      const player = squad.value[Math.floor(Math.random() * squad.value.length)]
+      player.morale = Math.max(30, player.morale - 10)
+      addInboxMessage({
+        from: player.name,
+        subject: 'Squad Concerns',
+        message: `Coach, I'm feeling a bit frustrated lately. My morale has dropped to ${player.morale}/100.`,
+        type: 'news'
+      })
     },
     () => {
       // Budget bonus
@@ -887,11 +1001,115 @@ const generateRandomEvent = () => {
         message: `Great news! A new sponsorship deal has brought in $${bonus.toLocaleString()} for the club.`,
         type: 'finance'
       })
+    },
+    () => {
+      // Player milestone
+      const player = squad.value[Math.floor(Math.random() * squad.value.length)]
+      if (player.matches > 0) {
+        player.morale = Math.min(100, player.morale + 8)
+        addInboxMessage({
+          from: 'Club Historian',
+          subject: `${player.name} Milestone`,
+          message: `${player.name} has reached ${player.matches} appearances for the club! They're delighted with this achievement.`,
+          type: 'news'
+        })
+      }
     }
   ]
 
   const event = events[Math.floor(Math.random() * events.length)]
   event()
+}
+
+// Football Manager-style functions
+const generateScoutReport = (opponent) => {
+  const strengths = [
+    'Strong in midfield',
+    'Clinical finishers',
+    'Solid defensive structure',
+    'Excellent at set pieces',
+    'High work rate',
+    'Dangerous on counter-attacks',
+    'Dominant in the air'
+  ]
+
+  const weaknesses = [
+    'Vulnerable on the flanks',
+    'Slow to defend transitions',
+    'Lack pace in defense',
+    'Struggle with high pressing',
+    'Weak at defending set pieces',
+    'Poor discipline (cards)',
+    'Limited attacking options'
+  ]
+
+  const rating = Math.floor(Math.random() * 15) + 70 // 70-85
+
+  const report = {
+    strengths: [
+      strengths[Math.floor(Math.random() * strengths.length)],
+      strengths[Math.floor(Math.random() * strengths.length)]
+    ],
+    weaknesses: [
+      weaknesses[Math.floor(Math.random() * weaknesses.length)],
+      weaknesses[Math.floor(Math.random() * weaknesses.length)]
+    ],
+    rating: rating
+  }
+
+  scoutReports.value[opponent] = report
+
+  addInboxMessage({
+    from: 'Head Scout',
+    subject: `Scout Report: ${opponent}`,
+    message: `Rating: ${rating}/100\n\nStrengths:\n- ${report.strengths.join('\n- ')}\n\nWeaknesses:\n- ${report.weaknesses.join('\n- ')}`,
+    type: 'news'
+  })
+}
+
+const updateBoardConfidence = () => {
+  const ourPosition = sortedStandings.value.findIndex(t => t.team === teamName.value) + 1
+
+  // Update job security based on position vs expectations
+  if (ourPosition <= boardExpectations.value.targetPosition) {
+    boardExpectations.value.jobSecurity = Math.min(100, boardExpectations.value.jobSecurity + 2)
+    boardExpectations.value.boardConfidence = 'Happy'
+    boardExpectations.value.pressureLevel = 'Low'
+  } else if (ourPosition > boardExpectations.value.minimumPosition) {
+    boardExpectations.value.jobSecurity = Math.max(0, boardExpectations.value.jobSecurity - 3)
+    boardExpectations.value.boardConfidence = 'Concerned'
+    boardExpectations.value.pressureLevel = 'High'
+  } else {
+    boardExpectations.value.boardConfidence = 'Stable'
+    boardExpectations.value.pressureLevel = 'Medium'
+  }
+
+  // Send board message on significant changes
+  if (boardExpectations.value.jobSecurity < 40 && Math.random() < 0.2) {
+    addInboxMessage({
+      from: 'Board of Directors',
+      subject: 'Performance Concerns',
+      message: `The board is concerned about the team's current position (${ourPosition}). We expect improvement in the coming rounds. Job security: ${boardExpectations.value.jobSecurity}/100`,
+      type: 'news'
+    })
+  } else if (boardExpectations.value.jobSecurity > 85 && Math.random() < 0.15) {
+    addInboxMessage({
+      from: 'Board of Directors',
+      subject: 'Excellent Progress',
+      message: `The board is delighted with the team's performance this season. Keep up the great work!`,
+      type: 'news'
+    })
+  }
+}
+
+// Helper function for ordinal suffixes (1st, 2nd, 3rd, etc.)
+const getOrdinalSuffix = (num) => {
+  const j = num % 10
+  const k = num % 100
+  if (j === 1 && k !== 11) return 'st'
+  if (j === 2 && k !== 12) return 'nd'
+  if (j === 3 && k !== 13) return 'rd'
+  return 'th'
 }
 </script>
 
@@ -953,6 +1171,16 @@ const generateRandomEvent = () => {
         :class="{ active: activeTab === 'calendar' }">
         Calendar
       </button>
+      <button
+        @click="activeTab = 'tactics'"
+        :class="{ active: activeTab === 'tactics' }">
+        Tactics
+      </button>
+      <button
+        @click="activeTab = 'board'"
+        :class="{ active: activeTab === 'board' }">
+        Board
+      </button>
     </nav>
 
     <!-- Squad Tab -->
@@ -965,8 +1193,8 @@ const generateRandomEvent = () => {
         <div
           v-for="player in squad"
           :key="player.id"
-          class="player-card"
-          :class="{ injured: player.injured }">
+          class="player-card fm-style"
+          :class="{ injured: player.injured, suspended: player.suspended }">
           <div class="player-header">
             <span class="player-position">{{ player.position }}</span>
             <span class="player-overall">{{ player.overall }}</span>
@@ -976,12 +1204,69 @@ const generateRandomEvent = () => {
             <span>Age: {{ player.age }}</span>
             <span>Value: ${{ (player.value / 1000000).toFixed(1) }}M</span>
           </div>
+
+          <!-- FM-style metrics -->
+          <div class="fm-metrics">
+            <div class="metric">
+              <span class="metric-label">Form</span>
+              <span class="metric-value" :class="{
+                good: player.form >= 7.5,
+                average: player.form >= 6.5 && player.form < 7.5,
+                poor: player.form < 6.5
+              }">{{ player.form.toFixed(1) }}</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Morale</span>
+              <span class="metric-value" :class="{
+                good: player.morale >= 80,
+                average: player.morale >= 60 && player.morale < 80,
+                poor: player.morale < 60
+              }">{{ player.morale }}</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Fitness</span>
+              <span class="metric-value" :class="{
+                good: player.fitness >= 90,
+                average: player.fitness >= 75 && player.fitness < 90,
+                poor: player.fitness < 75
+              }">{{ player.fitness }}%</span>
+            </div>
+          </div>
+
+          <!-- Attributes -->
+          <div class="player-attributes">
+            <div class="attr-item">
+              <span class="attr-label">Pace</span>
+              <span class="attr-val">{{ player.attributes.pace }}</span>
+            </div>
+            <div class="attr-item">
+              <span class="attr-label">Mark</span>
+              <span class="attr-val">{{ player.attributes.marking }}</span>
+            </div>
+            <div class="attr-item">
+              <span class="attr-label">Kick</span>
+              <span class="attr-val">{{ player.attributes.kicking }}</span>
+            </div>
+            <div class="attr-item">
+              <span class="attr-label">End</span>
+              <span class="attr-val">{{ player.attributes.endurance }}</span>
+            </div>
+          </div>
+
           <div class="player-performance">
             <span>🏉 {{ player.goals }}</span>
             <span>📊 {{ player.behinds }}</span>
             <span>🎮 {{ player.matches }}</span>
+            <span v-if="player.yellowCards > 0">🟨 {{ player.yellowCards }}</span>
+            <span v-if="player.redCards > 0">🟥 {{ player.redCards }}</span>
           </div>
-          <div v-if="player.injured" class="injury-badge">🚑 INJURED</div>
+
+          <div v-if="player.injured" class="status-badge injury">
+            🚑 INJURED ({{ player.injuryDaysRemaining }} days)
+          </div>
+          <div v-if="player.suspended" class="status-badge suspension">
+            ⛔ SUSPENDED ({{ player.suspensionDaysRemaining }} days)
+          </div>
         </div>
       </div>
     </div>
@@ -1456,6 +1741,177 @@ const generateRandomEvent = () => {
               <div class="fixture-day">Day {{ fixture.day }}</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tactics Tab -->
+    <div v-if="activeTab === 'tactics'" class="tab-content">
+      <div class="tactics-panel">
+        <h2>⚽ Team Tactics</h2>
+        <p class="tactics-subtitle">Configure your team's playing style and approach</p>
+
+        <div class="tactics-grid">
+          <div class="tactics-section">
+            <h3>Formation</h3>
+            <select v-model="tactics.formation" class="tactics-select">
+              <option value="Balanced">Balanced</option>
+              <option value="Attacking">Attacking</option>
+              <option value="Defensive">Defensive</option>
+            </select>
+            <p class="tactic-description">
+              <span v-if="tactics.formation === 'Balanced'">Equal focus on attack and defense</span>
+              <span v-if="tactics.formation === 'Attacking'">More players forward, aggressive play</span>
+              <span v-if="tactics.formation === 'Defensive'">Solid defensive structure, counter-attack focus</span>
+            </p>
+          </div>
+
+          <div class="tactics-section">
+            <h3>Playing Style</h3>
+            <select v-model="tactics.playingStyle" class="tactics-select">
+              <option value="Possession">Possession</option>
+              <option value="Counter-Attack">Counter-Attack</option>
+              <option value="Direct">Direct</option>
+            </select>
+            <p class="tactic-description">
+              <span v-if="tactics.playingStyle === 'Possession'">Control the ball, patient build-up</span>
+              <span v-if="tactics.playingStyle === 'Counter-Attack'">Fast breaks, exploit space</span>
+              <span v-if="tactics.playingStyle === 'Direct'">Quick forward passes, vertical play</span>
+            </p>
+          </div>
+
+          <div class="tactics-section">
+            <h3>Tempo</h3>
+            <select v-model="tactics.tempo" class="tactics-select">
+              <option value="Slow">Slow</option>
+              <option value="Medium">Medium</option>
+              <option value="Fast">Fast</option>
+            </select>
+            <p class="tactic-description">
+              <span v-if="tactics.tempo === 'Slow'">Controlled, measured approach</span>
+              <span v-if="tactics.tempo === 'Medium'">Balanced game speed</span>
+              <span v-if="tactics.tempo === 'Fast'">High-intensity, quick transitions</span>
+            </p>
+          </div>
+
+          <div class="tactics-section">
+            <h3>Pressing</h3>
+            <select v-model="tactics.pressing" class="tactics-select">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+            <p class="tactic-description">
+              <span v-if="tactics.pressing === 'Low'">Sit deep, conserve energy</span>
+              <span v-if="tactics.pressing === 'Medium'">Press in middle third</span>
+              <span v-if="tactics.pressing === 'High'">Aggressive pressing, high energy</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="tactics-summary">
+          <h3>Current Tactical Setup</h3>
+          <div class="tactic-chips">
+            <span class="chip">{{ tactics.formation }}</span>
+            <span class="chip">{{ tactics.playingStyle }}</span>
+            <span class="chip">{{ tactics.tempo }} Tempo</span>
+            <span class="chip">{{ tactics.pressing }} Pressing</span>
+          </div>
+          <p class="tactics-note">
+            These tactics will influence match outcomes based on player attributes and opposition strengths.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Board Tab -->
+    <div v-if="activeTab === 'board'" class="tab-content">
+      <div class="board-panel">
+        <h2>📋 Board of Directors</h2>
+        <p class="board-subtitle">Your relationship with the board and job security</p>
+
+        <div class="board-overview">
+          <div class="board-card job-security">
+            <h3>Job Security</h3>
+            <div class="security-meter">
+              <div class="security-bar" :style="{ width: boardExpectations.jobSecurity + '%' }"></div>
+            </div>
+            <p class="security-value">{{ boardExpectations.jobSecurity }}/100</p>
+            <p class="security-status" :class="{
+              critical: boardExpectations.jobSecurity < 30,
+              warning: boardExpectations.jobSecurity >= 30 && boardExpectations.jobSecurity < 60,
+              safe: boardExpectations.jobSecurity >= 60
+            }">
+              <span v-if="boardExpectations.jobSecurity < 30">🔴 Critical - Job at risk!</span>
+              <span v-else-if="boardExpectations.jobSecurity < 60">🟡 Moderate - Must improve</span>
+              <span v-else>🟢 Secure - Board confident</span>
+            </p>
+          </div>
+
+          <div class="board-card expectations">
+            <h3>Season Expectations</h3>
+            <div class="expectation-item">
+              <span class="exp-label">Target Position:</span>
+              <span class="exp-value">Top {{ boardExpectations.targetPosition }} (Finals)</span>
+            </div>
+            <div class="expectation-item">
+              <span class="exp-label">Minimum Position:</span>
+              <span class="exp-value">Above {{ boardExpectations.minimumPosition }}</span>
+            </div>
+            <div class="expectation-item">
+              <span class="exp-label">Board Confidence:</span>
+              <span class="exp-value" :class="{
+                happy: boardExpectations.boardConfidence === 'Happy',
+                stable: boardExpectations.boardConfidence === 'Stable',
+                concerned: boardExpectations.boardConfidence === 'Concerned'
+              }">
+                {{ boardExpectations.boardConfidence }}
+              </span>
+            </div>
+            <div class="expectation-item">
+              <span class="exp-label">Pressure Level:</span>
+              <span class="exp-value" :class="{
+                low: boardExpectations.pressureLevel === 'Low',
+                medium: boardExpectations.pressureLevel === 'Medium',
+                high: boardExpectations.pressureLevel === 'High'
+              }">
+                {{ boardExpectations.pressureLevel }}
+              </span>
+            </div>
+          </div>
+
+          <div class="board-card current-position">
+            <h3>Current League Position</h3>
+            <p class="position-number">
+              {{ sortedStandings.findIndex(t => t.team === teamName) + 1 }}
+              <span class="position-suffix">{{ getOrdinalSuffix(sortedStandings.findIndex(t => t.team === teamName) + 1) }}</span>
+            </p>
+            <p class="position-detail">
+              out of {{ sortedStandings.length }} teams
+            </p>
+            <p v-if="sortedStandings.findIndex(t => t.team === teamName) + 1 <= boardExpectations.targetPosition" class="position-status success">
+              ✓ Meeting expectations
+            </p>
+            <p v-else-if="sortedStandings.findIndex(t => t.team === teamName) + 1 > boardExpectations.minimumPosition" class="position-status danger">
+              ⚠ Below minimum requirement!
+            </p>
+            <p v-else class="position-status warning">
+              Must improve to meet target
+            </p>
+          </div>
+        </div>
+
+        <div class="board-advice">
+          <h3>💡 Board Advice</h3>
+          <p v-if="boardExpectations.jobSecurity < 40">
+            The board is seriously concerned about recent performances. Immediate improvement is required to secure your position.
+          </p>
+          <p v-else-if="boardExpectations.jobSecurity < 70">
+            The board expects consistent results. Focus on climbing the ladder to relieve pressure.
+          </p>
+          <p v-else>
+            The board is pleased with your progress. Maintain this level of performance to ensure continued support.
+          </p>
         </div>
       </div>
     </div>
@@ -3145,5 +3601,377 @@ h3.negative {
 .fixture-teams .our-team {
   color: #1e3c72;
   font-weight: 700;
+}
+
+/* Football Manager-Style Player Cards */
+.player-card.fm-style {
+  padding: 1.25rem;
+}
+
+.player-card.suspended {
+  opacity: 0.6;
+  background: #fff9f0;
+  border-color: #ff9800;
+}
+
+.fm-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.metric-value.good {
+  color: #4caf50;
+}
+
+.metric-value.average {
+  color: #ff9800;
+}
+
+.metric-value.poor {
+  color: #ff6b6b;
+}
+
+.player-attributes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.attr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.attr-label {
+  font-size: 0.65rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.attr-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e3c72;
+}
+
+.status-badge {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  text-align: center;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.status-badge.injury {
+  background: #ff6b6b;
+  color: white;
+}
+
+.status-badge.suspension {
+  background: #ff9800;
+  color: white;
+}
+
+/* Tactics Panel */
+.tactics-panel {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.tactics-panel h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.tactics-subtitle,
+.board-subtitle {
+  color: #666;
+  margin: 0 0 2rem 0;
+  font-size: 0.95rem;
+}
+
+.tactics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.tactics-section {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+}
+
+.tactics-section h3 {
+  margin: 0 0 1rem 0;
+  color: #1e3c72;
+  font-size: 1.1rem;
+}
+
+.tactics-select {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 0.75rem;
+}
+
+.tactics-select:focus {
+  outline: none;
+  border-color: #1e3c72;
+}
+
+.tactic-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+.tactics-summary {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.tactics-summary h3 {
+  margin: 0 0 1rem 0;
+}
+
+.tactic-chips {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.tactics-note {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Board Panel */
+.board-panel {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.board-panel h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.board-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.board-card {
+  background: #f9f9f9;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.board-card h3 {
+  margin: 0 0 1rem 0;
+  color: #1e3c72;
+  font-size: 1.1rem;
+}
+
+.security-meter {
+  width: 100%;
+  height: 30px;
+  background: #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.security-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b6b 0%, #ff9800 50%, #4caf50 100%);
+  transition: width 0.5s ease;
+}
+
+.security-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0.5rem 0;
+}
+
+.security-status {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.security-status.critical {
+  color: #ff6b6b;
+}
+
+.security-status.warning {
+  color: #ff9800;
+}
+
+.security-status.safe {
+  color: #4caf50;
+}
+
+.expectation-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.expectation-item:last-child {
+  border-bottom: none;
+}
+
+.exp-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.exp-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.exp-value.happy {
+  color: #4caf50;
+}
+
+.exp-value.stable {
+  color: #ff9800;
+}
+
+.exp-value.concerned {
+  color: #ff6b6b;
+}
+
+.exp-value.low {
+  color: #4caf50;
+}
+
+.exp-value.medium {
+  color: #ff9800;
+}
+
+.exp-value.high {
+  color: #ff6b6b;
+}
+
+.position-number {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #1e3c72;
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1;
+}
+
+.position-suffix {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.position-detail {
+  color: #666;
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+.position-status {
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.position-status.success {
+  background: #e8f5e9;
+  color: #4caf50;
+}
+
+.position-status.warning {
+  background: #fff8e1;
+  color: #ff9800;
+}
+
+.position-status.danger {
+  background: #ffebee;
+  color: #ff6b6b;
+}
+
+.board-advice {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.board-advice h3 {
+  margin: 0 0 1rem 0;
+}
+
+.board-advice p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
 }
 </style>
