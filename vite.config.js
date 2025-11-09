@@ -31,8 +31,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor': ['vue'],
-          'pwa': ['vite-plugin-pwa']
+          'vendor': ['vue']
         }
       }
     }

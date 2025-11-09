@@ -1,6 +1,7 @@
 {
-  "name": "cricketapp",
-  "version": "0.0.0",
+  "name": "football-manager-simulator",
+  "version": "1.0.0",
+  "description": "Football Manager Simulator - Manage your team, simulate matches, and win trophies",
   "private": true,
   "type": "module",
   "scripts": {
