@@ -608,16 +608,32 @@ const simulateMatch = () => {
 const endMatch = () => {
   currentMatch.value.active = false
 
-  // Update player stats
-  squad.value.forEach(player => {
-    if (!player.injured) {
-      player.matches++
-    }
-  })
-
   // Calculate AFL scores (goals * 6 + behinds)
   const homeTotal = currentMatch.value.homeGoals * 6 + currentMatch.value.homeBehinds
   const awayTotal = currentMatch.value.awayGoals * 6 + currentMatch.value.awayBehinds
+
+  // Update fixture with final scores
+  const matchFixture = fixtures.value.find(f =>
+    f.homeTeam === currentMatch.value.homeTeam &&
+    f.awayTeam === currentMatch.value.awayTeam &&
+    f.played
+  )
+  if (matchFixture) {
+    matchFixture.homeScore = homeTotal
+    matchFixture.awayScore = awayTotal
+  }
+
+  // Update player stats - ALL players who participated get match count
+  squad.value.forEach(player => {
+    if (!player.injured && !player.suspended) {
+      player.matches++
+      // Update form history every match
+      player.formHistory.push(player.form)
+      if (player.formHistory.length > 10) {
+        player.formHistory.shift() // Keep only last 10 matches
+      }
+    }
+  })
 
   // Update standings
   const ourTeam = standings.value.find(t => t.team === teamName.value)
@@ -663,9 +679,9 @@ const endMatch = () => {
     })
   }
 
-  // Calculate percentage (AFL style: pointsFor / pointsAgainst * 100)
-  ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100).toFixed(2) : 100
-  opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100).toFixed(2) : 100
+  // Calculate percentage (AFL style: pointsFor / pointsAgainst * 100) - FIXED: store as number
+  ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100) : 100
+  opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100) : 100
 
   // Add match day revenue
   const attendance = Math.floor(Math.random() * 30000) + 20000
@@ -681,9 +697,6 @@ const endMatch = () => {
     message: `Final Score: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal}). Attendance: ${attendance.toLocaleString()}. Revenue: $${matchRevenue.toLocaleString()}`,
     type: 'match'
   })
-
-  // Toggle home/away for next match
-  currentMatch.value.isHome = !currentMatch.value.isHome
 }
 
 const healAllPlayers = () => {
@@ -938,27 +951,40 @@ const generateFixtures = () => {
   const allFixtures = []
   let matchId = 1
 
-  // Generate round-robin fixtures (each team plays each other twice - home and away)
-  for (let round = 1; round <= calendar.value.totalRounds; round++) {
-    // Alternate home/away each round
-    const isHome = round % 2 === 1
-    const opponentIndex = (round - 1) % opponents.length
-    const opponent = opponents[opponentIndex]
-
-    // Matches on Day 7 of each round (weekend)
+  // Generate proper round-robin fixtures - each team plays each other twice (home and away)
+  // First half: play each opponent once
+  opponents.forEach((opponent, index) => {
+    const round = index + 1
     const matchDay = (round - 1) * calendar.value.daysPerRound + 7
 
     allFixtures.push({
       id: matchId++,
       round: round,
       day: matchDay,
-      homeTeam: isHome ? teamName.value : opponent,
-      awayTeam: isHome ? opponent : teamName.value,
+      homeTeam: teamName.value,
+      awayTeam: opponent,
       played: false,
       homeScore: 0,
       awayScore: 0
     })
-  }
+  })
+
+  // Second half: play each opponent again with reversed home/away
+  opponents.forEach((opponent, index) => {
+    const round = opponents.length + index + 1
+    const matchDay = (round - 1) * calendar.value.daysPerRound + 7
+
+    allFixtures.push({
+      id: matchId++,
+      round: round,
+      day: matchDay,
+      homeTeam: opponent,
+      awayTeam: teamName.value,
+      played: false,
+      homeScore: 0,
+      awayScore: 0
+    })
+  })
 
   fixtures.value = allFixtures
   fixturesGenerated.value = true
@@ -1089,35 +1115,57 @@ const applyTraining = () => {
   }
 
   const bonus = intensityBonus[training.value.intensity]
+  const improvedPlayers = []
 
   squad.value.forEach(player => {
     if (!player.injured && !player.suspended && player.fitness > 80) {
       // Attribute improvements based on training focus
       if (Math.random() < bonus) {
+        let improvedAttr = null
         switch (training.value.focus) {
           case 'attack':
-            if (player.attributes.kicking < 99) player.attributes.kicking++
+            if (player.attributes.kicking < 99) {
+              player.attributes.kicking++
+              improvedAttr = 'Kicking'
+            }
             break
           case 'defense':
-            if (player.attributes.marking < 99) player.attributes.marking++
+            if (player.attributes.marking < 99) {
+              player.attributes.marking++
+              improvedAttr = 'Marking'
+            }
             break
           case 'fitness':
-            if (player.attributes.endurance < 99) player.attributes.endurance++
-            if (player.attributes.pace < 99) player.attributes.pace++
+            if (player.attributes.endurance < 99) {
+              player.attributes.endurance++
+              improvedAttr = 'Endurance'
+            }
+            if (player.attributes.pace < 99 && Math.random() < 0.5) {
+              player.attributes.pace++
+              improvedAttr = improvedAttr ? `${improvedAttr} & Pace` : 'Pace'
+            }
             break
           case 'balanced':
             // Small chance to improve random attribute
             const attrs = ['pace', 'marking', 'kicking', 'endurance']
             const attr = attrs[Math.floor(Math.random() * attrs.length)]
-            if (player.attributes[attr] < 99) player.attributes[attr]++
+            if (player.attributes[attr] < 99) {
+              player.attributes[attr]++
+              improvedAttr = attr.charAt(0).toUpperCase() + attr.slice(1)
+            }
             break
         }
 
         // Update overall based on attributes
-        player.overall = Math.floor(
+        const newOverall = Math.floor(
           (player.attributes.pace + player.attributes.marking +
            player.attributes.kicking + player.attributes.endurance) / 4
         )
+
+        if (newOverall > player.overall || improvedAttr) {
+          player.overall = newOverall
+          improvedPlayers.push({ name: player.name, attr: improvedAttr })
+        }
       }
 
       // Morale boost from good training
@@ -1131,6 +1179,22 @@ const applyTraining = () => {
       player.fitness = Math.max(70, player.fitness - 5)
     }
   })
+
+  // Send training report
+  training.value.lastTrainingDay = calendar.value.currentDay
+
+  if (improvedPlayers.length > 0) {
+    const playerList = improvedPlayers
+      .map(p => `${p.name} (${p.attr})`)
+      .join(', ')
+
+    addInboxMessage({
+      from: 'Training Staff',
+      subject: '💪 Training Session Results',
+      message: `Training session complete! ${improvedPlayers.length} player(s) improved: ${playerList}. Training focus: ${training.value.focus}, Intensity: ${training.value.intensity}.`,
+      type: 'news'
+    })
+  }
 }
 
 const generateRandomEvent = () => {
@@ -1579,6 +1643,37 @@ const getOrdinalSuffix = (num) => {
     <div v-if="activeTab === 'match'" class="tab-content">
       <div v-if="!currentMatch.active" class="match-setup">
         <h2>Start New Match</h2>
+
+        <!-- Scout Reports -->
+        <div v-if="Object.keys(scoutReports).length > 0" class="scout-reports-section">
+          <h3>📋 Opposition Scouting</h3>
+          <div class="scout-reports">
+            <div v-for="(report, team) in scoutReports" :key="team" class="scout-report-card">
+              <h4>{{ team }}</h4>
+              <div class="scout-rating">
+                <span class="rating-label">Team Rating:</span>
+                <span class="rating-value" :class="{
+                  'rating-high': report.rating >= 80,
+                  'rating-medium': report.rating >= 70 && report.rating < 80,
+                  'rating-low': report.rating < 70
+                }">{{ report.rating }}/100</span>
+              </div>
+              <div class="scout-detail">
+                <strong>Strengths:</strong>
+                <ul>
+                  <li v-for="(strength, idx) in report.strengths" :key="idx">{{ strength }}</li>
+                </ul>
+              </div>
+              <div class="scout-detail">
+                <strong>Weaknesses:</strong>
+                <ul>
+                  <li v-for="(weakness, idx) in report.weaknesses" :key="idx">{{ weakness }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="opponent-select">
           <button
             v-for="opponent in availableOpponents"
@@ -2160,6 +2255,53 @@ const getOrdinalSuffix = (num) => {
             <span class="chip">{{ tactics.tempo }} Tempo</span>
             <span class="chip">{{ tactics.pressing }} Pressing</span>
           </div>
+
+          <!-- Tactical Impact Display -->
+          <div class="tactical-impact">
+            <h4>📊 Tactical Impact on Match Performance</h4>
+            <div class="impact-grid">
+              <div class="impact-stat">
+                <span class="impact-label">Attack Modifier:</span>
+                <span class="impact-value" :class="{
+                  positive: getTacticalModifier(true) > 1,
+                  negative: getTacticalModifier(true) < 1
+                }">
+                  {{ (getTacticalModifier(true) > 1 ? '+' : '') }}{{ ((getTacticalModifier(true) - 1) * 100).toFixed(0) }}%
+                </span>
+              </div>
+              <div class="impact-stat">
+                <span class="impact-label">Defense Modifier:</span>
+                <span class="impact-value" :class="{
+                  positive: getTacticalModifier(false) > 1,
+                  negative: getTacticalModifier(false) < 1
+                }">
+                  {{ (getTacticalModifier(false) > 1 ? '+' : '') }}{{ ((getTacticalModifier(false) - 1) * 100).toFixed(0) }}%
+                </span>
+              </div>
+            </div>
+            <div class="impact-breakdown">
+              <p><strong>Formation Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.formation === 'Attacking'">+15% Attack, -10% Defense</li>
+                <li v-if="tactics.formation === 'Defensive'">+15% Defense, -10% Attack</li>
+                <li v-if="tactics.formation === 'Balanced'">No modifiers (balanced approach)</li>
+              </ul>
+              <p><strong>Style Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.playingStyle === 'Direct'">+10% Attack</li>
+                <li v-if="tactics.playingStyle === 'Counter-Attack'">+5% Attack</li>
+                <li v-if="tactics.playingStyle === 'Possession'">No attack bonus (control-focused)</li>
+              </ul>
+              <p><strong>Other Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.tempo === 'Fast'">+5% overall speed</li>
+                <li v-if="tactics.tempo === 'Slow'">-5% overall speed</li>
+                <li v-if="tactics.pressing === 'High'">+10% Defense, more cards</li>
+                <li v-if="tactics.pressing === 'Low'">-5% Defense, fewer cards</li>
+              </ul>
+            </div>
+          </div>
+
           <p class="tactics-note">
             These tactics will influence match outcomes based on player attributes and opposition strengths.
           </p>
@@ -2262,70 +2404,119 @@ const getOrdinalSuffix = (num) => {
 </template>
 
 <style scoped>
+/* ===== ROOT & VARIABLES ===== */
 .football-manager {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #f8f9fa;
+  min-height: 100vh;
 }
 
+/* ===== MODERN HEADER ===== */
 .manager-header {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
   color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem 3rem;
+  margin: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .manager-header h1 {
-  margin: 0 0 1rem 0;
-  font-size: 2.5rem;
+  margin: 0 0 1.25rem 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .header-stats {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
 }
 
 .header-stats .stat {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
 }
 
+.header-stats .stat:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+/* ===== MODERN TAB NAVIGATION ===== */
 .tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid #e0e0e0;
+  gap: 0;
+  margin: 0;
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f1f3f5;
+  position: sticky;
+  top: 140px;
+  z-index: 99;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: #f1f3f5;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 2px;
 }
 
 .tabs button {
-  padding: 1rem 2rem;
+  padding: 1rem 1.5rem;
   border: none;
   background: transparent;
-  color: #666;
+  color: #6c757d;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
   border-bottom: 3px solid transparent;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
 }
 
 .tabs button.active {
-  color: #1e3c72;
-  border-bottom-color: #1e3c72;
+  color: #2c5364;
+  border-bottom-color: #2c5364;
   font-weight: 600;
+  background: linear-gradient(to bottom, rgba(44, 83, 100, 0.03), transparent);
 }
 
-.tabs button:hover {
-  background: rgba(30, 60, 114, 0.05);
+.tabs button:hover:not(.active) {
+  background: #f8f9fa;
+  color: #495057;
 }
 
+/* ===== TAB CONTENT LAYOUT ===== */
 .tab-content {
-  animation: fadeIn 0.3s;
+  padding: 2rem 3rem;
+  animation: fadeIn 0.3s ease;
+  background: #f8f9fa;
+  min-height: calc(100vh - 250px);
 }
 
 @keyframes fadeIn {
@@ -2333,50 +2524,104 @@ const getOrdinalSuffix = (num) => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Squad Grid */
+/* ===== BADGE COMPONENT ===== */
+.badge {
+  background: #dc3545;
+  color: white;
+  border-radius: 10px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  min-width: 18px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* ===== SQUAD GRID ===== */
 .squad-controls {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .squad-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
 }
 
+/* ===== MODERN PLAYER CARDS ===== */
 .player-card {
   background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.3s;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0f2027, #2c5364);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .player-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-color: #1e3c72;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: #2c5364;
+}
+
+.player-card:hover::before {
+  opacity: 1;
 }
 
 .player-card.injured {
-  opacity: 0.6;
   background: #fff5f5;
-  border-color: #ff6b6b;
+  border-color: #ffc9c9;
+  opacity: 0.85;
+}
+
+.player-card.injured::before {
+  background: linear-gradient(90deg, #dc3545, #ff6b6b);
+}
+
+.player-card.suspended {
+  background: #fffbf5;
+  border-color: #ffe8cc;
+  opacity: 0.85;
+}
+
+.player-card.suspended::before {
+  background: linear-gradient(90deg, #fd7e14, #ffc107);
 }
 
 .player-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
 }
 
 .player-position {
-  background: #1e3c72;
+  background: linear-gradient(135deg, #0f2027, #2c5364);
   color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  padding: 0.375rem 0.875rem;
+  border-radius: 6px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(44, 83, 100, 0.2);
 }
 
 .player-overall {
@@ -2479,68 +2724,202 @@ const getOrdinalSuffix = (num) => {
   padding: 1.5rem 3rem;
 }
 
+/* Scout Reports Styles */
+.scout-reports-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f5f5f5;
+  border-radius: 12px;
+}
+
+.scout-reports-section h3 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+.scout-reports {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.scout-report-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.scout-report-card h4 {
+  margin: 0 0 1rem 0;
+  color: #1e3c72;
+  font-size: 1.2rem;
+  text-align: center;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.scout-rating {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.rating-label {
+  font-weight: 600;
+  color: #666;
+}
+
+.rating-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.rating-high {
+  color: #4caf50;
+}
+
+.rating-medium {
+  color: #ff9800;
+}
+
+.rating-low {
+  color: #f44336;
+}
+
+.scout-detail {
+  margin-bottom: 1rem;
+}
+
+.scout-detail strong {
+  color: #333;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.scout-detail ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.scout-detail li {
+  color: #666;
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
 .match-simulation {
   padding: 1rem;
 }
 
+/* ===== MODERN MATCH SCOREBOARD ===== */
 .scoreboard {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
   color: white;
-  padding: 2rem;
-  border-radius: 12px;
+  padding: 2.5rem 3rem;
+  border-radius: 16px;
   margin-bottom: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.scoreboard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(255,255,255,0.02) 10px,
+    rgba(255,255,255,0.02) 20px
+  );
+  pointer-events: none;
 }
 
 .scoreboard .team {
   flex: 1;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .scoreboard .team h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
+  margin: 0 0 1.25rem 0;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .score-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .score-line {
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .total-score {
-  font-size: 1.5rem;
-  opacity: 0.9;
+  font-size: 1.625rem;
+  opacity: 0.85;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.375rem 1rem;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
 }
 
 .match-time {
-  flex: 0 0 120px;
+  flex: 0 0 140px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1rem;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem 1rem;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
 }
 
 .quarter-label {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
   opacity: 0.9;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .minute {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .match-events {
@@ -2613,65 +2992,81 @@ const getOrdinalSuffix = (num) => {
   margin-bottom: 1.5rem;
 }
 
+/* ===== MODERN TABLES ===== */
 .standings-table {
   width: 100%;
   background: white;
-  border-collapse: collapse;
-  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #dee2e6;
 }
 
 .standings-table thead {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: linear-gradient(135deg, #212529, #343a40);
   color: white;
 }
 
 .standings-table th,
 .standings-table td {
-  padding: 1rem;
+  padding: 1.125rem 1.25rem;
   text-align: left;
 }
 
 .standings-table th {
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.8px;
+  border-bottom: 2px solid #495057;
 }
 
 .standings-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: background 0.2s;
+  border-bottom: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.standings-table tbody tr:last-child {
+  border-bottom: none;
 }
 
 .standings-table tbody tr:hover {
-  background: #f5f5f5;
+  background: #f8f9fa;
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .standings-table .our-team {
-  background: #e3f2fd;
-  font-weight: 600;
+  background: linear-gradient(90deg, rgba(44, 83, 100, 0.08), transparent);
+  font-weight: 700;
+  border-left: 4px solid #2c5364;
 }
 
 .standings-table .our-team:hover {
-  background: #bbdefb;
+  background: linear-gradient(90deg, rgba(44, 83, 100, 0.15), transparent);
 }
 
 .standings-table .team-name {
   font-weight: 600;
+  color: #212529;
 }
 
 .standings-table .points {
   font-weight: 700;
-  color: #1e3c72;
+  color: #2c5364;
+  font-size: 1.125rem;
 }
 
 .standings-table .positive {
-  color: #4caf50;
+  color: #28a745;
+  font-weight: 600;
 }
 
 .standings-table .negative {
-  color: #ff6b6b;
+  color: #dc3545;
+  font-weight: 600;
 }
 
 /* Statistics */
@@ -4142,6 +4537,82 @@ h3.negative {
   opacity: 0.9;
 }
 
+/* Tactical Impact Display */
+.tactical-impact {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.tactical-impact h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.impact-stat {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1rem;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.impact-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.impact-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.impact-value.positive {
+  color: #4caf50;
+}
+
+.impact-value.negative {
+  color: #ff6b6b;
+}
+
+.impact-breakdown {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.impact-breakdown p {
+  margin: 0.75rem 0 0.5rem 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.impact-breakdown p:first-child {
+  margin-top: 0;
+}
+
+.impact-breakdown ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style-type: circle;
+}
+
+.impact-breakdown li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
 /* Board Panel */
 .board-panel {
   background: white;
@@ -4319,44 +4790,71 @@ h3.negative {
 }
 
 /* Dashboard Styles */
+/* ===== MODERN DASHBOARD ===== */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
 }
 
 .dashboard-card {
   background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
+  border: 1px solid #dee2e6;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #0f2027, #2c5364);
 }
 
 .dashboard-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  border-color: #2c5364;
 }
 
 .dashboard-card h3 {
-  margin: 0 0 1.25rem 0;
-  color: #1e3c72;
-  font-size: 1.1rem;
+  margin: 0 0 1.5rem 0;
+  color: #212529;
+  font-size: 1.125rem;
   font-weight: 700;
+  letter-spacing: -0.2px;
 }
 
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .stat-item {
   text-align: center;
-  padding: 1rem;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-  border-radius: 8px;
+  padding: 1.25rem 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+  border: 1px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: linear-gradient(135deg, #0f2027, #2c5364);
+  border-color: #2c5364;
+  transform: scale(1.05);
+}
+
+.stat-item:hover .stat-value,
+.stat-item:hover .stat-label {
   color: white;
 }
 
@@ -4364,11 +4862,16 @@ h3.negative {
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+  color: #212529;
+  letter-spacing: -1px;
 }
 
 .stat-label {
-  font-size: 0.85rem;
-  opacity: 0.9;
+  font-size: 0.8125rem;
+  color: #6c757d;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .match-teams {
@@ -4403,21 +4906,34 @@ h3.negative {
   margin: 0.5rem 0 1rem 0;
 }
 
-.quick-action-btn {
+/* ===== MODERN BUTTONS ===== */
+.quick-action-btn,
+.action-btn {
   width: 100%;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #0f2027, #2c5364);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.3s;
+  font-size: 0.9375rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(44, 83, 100, 0.15);
+  letter-spacing: 0.2px;
 }
 
-.quick-action-btn:hover {
+.quick-action-btn:hover,
+.action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
+  box-shadow: 0 8px 20px rgba(44, 83, 100, 0.25);
+  background: linear-gradient(135deg, #2c5364, #0f2027);
+}
+
+.quick-action-btn:active,
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(44, 83, 100, 0.2);
 }
 
 .player-list {
@@ -4689,5 +5205,185 @@ h3.negative {
   border-radius: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: left 0.5s ease;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .squad-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  /* Header */
+  .manager-header {
+    padding: 2rem 1.5rem;
+    position: relative;
+  }
+
+  .manager-header h1 {
+    font-size: 1.875rem;
+  }
+
+  .header-stats {
+    gap: 1rem;
+  }
+
+  .header-stats .stat {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    position: relative;
+    top: 0;
+    padding: 0 0.5rem;
+  }
+
+  .tabs button {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  /* Content */
+  .tab-content {
+    padding: 1.5rem 1.25rem;
+  }
+
+  /* Dashboard */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .dashboard-card {
+    padding: 1.5rem;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.875rem;
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  /* Squad */
+  .squad-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Scoreboard */
+  .scoreboard {
+    flex-direction: column;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+  }
+
+  .scoreboard .team h2 {
+    font-size: 1.375rem;
+  }
+
+  .score-line {
+    font-size: 2.5rem;
+  }
+
+  .total-score {
+    font-size: 1.25rem;
+  }
+
+  .match-time {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* Tables */
+  .standings-table th,
+  .standings-table td {
+    padding: 0.875rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .standings-table th {
+    font-size: 0.6875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .manager-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .manager-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-stats {
+    gap: 0.75rem;
+  }
+
+  .header-stats .stat {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.875rem;
+  }
+
+  .tabs button {
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .tab-content {
+    padding: 1rem;
+  }
+
+  .dashboard-card {
+    padding: 1.25rem;
+  }
+
+  .dashboard-card h3 {
+    font-size: 1rem;
+  }
+
+  .stat-grid {
+    gap: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.6875rem;
+  }
+
+  .scoreboard {
+    padding: 1.5rem 1rem;
+  }
+
+  .score-line {
+    font-size: 2rem;
+  }
+
+  .total-score {
+    font-size: 1rem;
+  }
+
+  .action-btn,
+  .quick-action-btn {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.875rem;
+  }
 }
 </style>
