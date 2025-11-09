@@ -1,16 +1,16 @@
 <script setup>
-import FootballManager from './components/FootballManager.vue'
+import AFLManager from './components/AFLManager.vue'
 </script>
 
 <template>
   <div class="app-container">
     <main class="main-content">
-      <FootballManager />
+      <AFLManager />
     </main>
 
     <footer class="app-footer">
       <div class="footer-content">
-        <p class="footer-text">&copy; 2024 Football Manager Simulator. Built with Vue 3 + Vite</p>
+        <p class="footer-text">&copy; 2024 AFL Manager Simulator. Built with Vue 3 + Vite</p>
       </div>
     </footer>
   </div>

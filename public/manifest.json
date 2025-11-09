@@ -1,11 +1,11 @@
 {
-  "name": "Football Manager Simulator",
-  "short_name": "FM Sim",
-  "description": "Manage your team, simulate matches, and win trophies in this football manager game",
+  "name": "AFL Manager Simulator",
+  "short_name": "AFL Sim",
+  "description": "Manage your AFL team, simulate matches, draft players, and win the premiership",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f2027",
-  "theme_color": "#1e3c72",
+  "theme_color": "#d72317",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",

@@ -1,7 +1,7 @@
 {
-  "name": "football-manager-simulator",
-  "version": "1.0.0",
-  "description": "Football Manager Simulator - Manage your team, simulate matches, and win trophies",
+  "name": "afl-manager-simulator",
+  "version": "2.0.0",
+  "description": "AFL Manager Simulator - Manage your AFL team, simulate matches, draft players, and win the premiership",
   "private": true,
   "type": "module",
   "scripts": {
