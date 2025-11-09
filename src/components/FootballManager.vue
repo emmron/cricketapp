@@ -6,35 +6,35 @@ const activeTab = ref('squad')
 const simulationSpeed = ref(500)
 
 // Team data
-const teamName = ref('FC Manager')
+const teamName = ref('Melbourne Demons')
 const budget = ref(50000000)
 const reputation = ref(50)
 
 // Squad with realistic player stats
 const squad = ref([
-  // Goalkeepers
-  { id: 1, name: 'David Martinez', position: 'GK', overall: 82, age: 28, value: 15000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 2, name: 'Lucas Weber', position: 'GK', overall: 75, age: 24, value: 5000000, goals: 0, assists: 0, matches: 0, injured: false },
+  // Full Forwards
+  { id: 1, name: 'Jack Mitchell', position: 'FF', overall: 89, age: 26, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 2, name: 'Tom Brown', position: 'FF', overall: 83, age: 29, value: 32000000, goals: 0, behinds: 0, matches: 0, injured: false },
+
+  // Half Forwards
+  { id: 3, name: 'Luke Petracca', position: 'CHF', overall: 87, age: 27, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 4, name: 'Charlie Cameron', position: 'HFF', overall: 85, age: 28, value: 48000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 5, name: 'Toby Greene', position: 'HFF', overall: 84, age: 30, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false },
+
+  // Midfield / Ruck
+  { id: 6, name: 'Max Gawn', position: 'RK', overall: 88, age: 31, value: 50000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 7, name: 'Patrick Cripps', position: 'C', overall: 90, age: 28, value: 70000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 8, name: 'Clayton Oliver', position: 'RV', overall: 88, age: 26, value: 60000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 9, name: 'Marcus Bontempelli', position: 'RR', overall: 89, age: 28, value: 65000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 10, name: 'Lachie Neale', position: 'W', overall: 87, age: 30, value: 58000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 11, name: 'Andrew McGrath', position: 'W', overall: 84, age: 26, value: 45000000, goals: 0, behinds: 0, matches: 0, injured: false },
 
   // Defenders
-  { id: 3, name: 'Alessandro Rossi', position: 'CB', overall: 85, age: 26, value: 35000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 4, name: 'John Smith', position: 'CB', overall: 83, age: 29, value: 25000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 5, name: 'Pierre Dubois', position: 'LB', overall: 81, age: 25, value: 20000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 6, name: 'Miguel Santos', position: 'RB', overall: 80, age: 27, value: 18000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 7, name: 'Ivan Petrov', position: 'CB', overall: 79, age: 30, value: 12000000, goals: 0, assists: 0, matches: 0, injured: false },
-
-  // Midfielders
-  { id: 8, name: 'Kevin Anderson', position: 'CDM', overall: 84, age: 27, value: 30000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 9, name: 'Marco Bianchi', position: 'CM', overall: 86, age: 24, value: 40000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 10, name: 'Carlos Fernandez', position: 'CAM', overall: 88, age: 25, value: 55000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 11, name: 'Thomas Mueller', position: 'CM', overall: 82, age: 28, value: 28000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 12, name: 'Andre Silva', position: 'RM', overall: 81, age: 23, value: 22000000, goals: 0, assists: 0, matches: 0, injured: false },
-
-  // Forwards
-  { id: 13, name: 'Luca Romano', position: 'ST', overall: 89, age: 26, value: 65000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 14, name: 'Mohamed Hassan', position: 'LW', overall: 87, age: 23, value: 50000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 15, name: 'James Wilson', position: 'RW', overall: 85, age: 24, value: 42000000, goals: 0, assists: 0, matches: 0, injured: false },
-  { id: 16, name: 'Diego Lopez', position: 'ST', overall: 83, age: 29, value: 32000000, goals: 0, assists: 0, matches: 0, injured: false }
+  { id: 12, name: 'Steven May', position: 'FB', overall: 86, age: 31, value: 40000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 13, name: 'Jake Lever', position: 'CHB', overall: 85, age: 28, value: 38000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 14, name: 'Nick Daicos', position: 'HBF', overall: 88, age: 21, value: 55000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 15, name: 'Bailey Smith', position: 'HBF', overall: 83, age: 23, value: 42000000, goals: 0, behinds: 0, matches: 0, injured: false },
+  { id: 16, name: 'Sam Taylor', position: 'FB', overall: 82, age: 25, value: 35000000, goals: 0, behinds: 0, matches: 0, injured: false }
 ])
 
 // Match state
@@ -43,8 +43,11 @@ const currentMatch = ref({
   opponent: '',
   homeTeam: teamName.value,
   awayTeam: '',
-  homeScore: 0,
-  awayScore: 0,
+  homeGoals: 0,
+  homeBehinds: 0,
+  awayGoals: 0,
+  awayBehinds: 0,
+  quarter: 1,
   minute: 0,
   events: [],
   isHome: true
@@ -52,22 +55,22 @@ const currentMatch = ref({
 
 // League standings
 const standings = ref([
-  { team: teamName.value, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Real Champions', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Barcelona United', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Bayern City', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Paris FC', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Liverpool Athletic', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Manchester Rovers', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-  { team: 'Chelsea Galaxy', played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 }
+  { team: teamName.value, played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Richmond Tigers', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Collingwood Magpies', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Carlton Blues', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Geelong Cats', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Sydney Swans', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'Brisbane Lions', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 },
+  { team: 'West Coast Eagles', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 }
 ])
 
 // Computed properties
 const sortedStandings = computed(() => {
   return [...standings.value].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points
-    if (b.gd !== a.gd) return b.gd - a.gd
-    return b.gf - a.gf
+    if (b.premiership !== a.premiership) return b.premiership - a.premiership
+    if (b.percentage !== a.percentage) return b.percentage - a.percentage
+    return b.pointsFor - a.pointsFor
   })
 })
 
@@ -100,8 +103,11 @@ const startMatch = (opponentName) => {
     opponent: opponentName,
     homeTeam: currentMatch.value.isHome ? teamName.value : opponentName,
     awayTeam: currentMatch.value.isHome ? opponentName : teamName.value,
-    homeScore: 0,
-    awayScore: 0,
+    homeGoals: 0,
+    homeBehinds: 0,
+    awayGoals: 0,
+    awayBehinds: 0,
+    quarter: 1,
     minute: 0,
     events: [],
     isHome: currentMatch.value.isHome
@@ -114,7 +120,8 @@ const simulateMatch = () => {
   if (!currentMatch.value.active) return
 
   const interval = setInterval(() => {
-    if (currentMatch.value.minute >= 90) {
+    // AFL match is 4 quarters of 30 minutes each (120 minutes total)
+    if (currentMatch.value.minute >= 120) {
       clearInterval(interval)
       endMatch()
       return
@@ -122,57 +129,107 @@ const simulateMatch = () => {
 
     currentMatch.value.minute++
 
+    // Update quarter display
+    currentMatch.value.quarter = Math.ceil(currentMatch.value.minute / 30)
+
+    // Quarter time breaks (skip scoring during these times)
+    const minuteInQuarter = currentMatch.value.minute % 30
+    if (minuteInQuarter === 0) {
+      currentMatch.value.events.unshift({
+        minute: currentMatch.value.minute,
+        type: 'quarter',
+        message: `🔔 End of Quarter ${currentMatch.value.quarter - 1}`
+      })
+    }
+
     // Random events during match
     const eventChance = Math.random()
 
-    // Goal chance (approximately 1 every 30 minutes on average)
-    if (eventChance > 0.97) {
-      const isHomeGoal = Math.random() > 0.5
-      const scoringTeam = isHomeGoal ? currentMatch.value.homeTeam : currentMatch.value.awayTeam
+    // Scoring chance (AFL is higher scoring - approximately every 3-4 minutes)
+    if (eventChance > 0.95) {
+      const isHomeScore = Math.random() > 0.5
+      const scoringTeam = isHomeScore ? currentMatch.value.homeTeam : currentMatch.value.awayTeam
+      const isGoal = Math.random() > 0.25 // 75% goals, 25% behinds
 
       if (scoringTeam === teamName.value) {
         // Our team scores
-        const attackers = squad.value.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))
-        const scorer = attackers[Math.floor(Math.random() * attackers.length)]
+        const scorers = squad.value.filter(p => ['FF', 'CHF', 'HFF', 'RV', 'RR'].includes(p.position))
+        const scorer = scorers[Math.floor(Math.random() * scorers.length)]
 
-        if (isHomeGoal) {
-          currentMatch.value.homeScore++
+        if (isGoal) {
+          if (isHomeScore) {
+            currentMatch.value.homeGoals++
+          } else {
+            currentMatch.value.awayGoals++
+          }
+          scorer.goals++
+
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'goal',
+            team: scoringTeam,
+            player: scorer.name,
+            message: `🏉 GOAL! ${scorer.name} kicks a major!`
+          })
         } else {
-          currentMatch.value.awayScore++
+          if (isHomeScore) {
+            currentMatch.value.homeBehinds++
+          } else {
+            currentMatch.value.awayBehinds++
+          }
+          scorer.behinds++
+
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'behind',
+            team: scoringTeam,
+            player: scorer.name,
+            message: `Behind to ${scorer.name}`
+          })
         }
-
-        scorer.goals++
-
-        currentMatch.value.events.unshift({
-          minute: currentMatch.value.minute,
-          type: 'goal',
-          team: scoringTeam,
-          player: scorer.name,
-          message: `⚽ GOAL! ${scorer.name} scores for ${scoringTeam}!`
-        })
       } else {
         // Opponent scores
-        if (isHomeGoal) {
-          currentMatch.value.homeScore++
-        } else {
-          currentMatch.value.awayScore++
-        }
+        if (isGoal) {
+          if (isHomeScore) {
+            currentMatch.value.homeGoals++
+          } else {
+            currentMatch.value.awayGoals++
+          }
 
-        currentMatch.value.events.unshift({
-          minute: currentMatch.value.minute,
-          type: 'goal',
-          team: scoringTeam,
-          message: `⚽ Goal for ${scoringTeam}...`
-        })
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'goal',
+            team: scoringTeam,
+            message: `🏉 Goal to ${scoringTeam}`
+          })
+        } else {
+          if (isHomeScore) {
+            currentMatch.value.homeBehinds++
+          } else {
+            currentMatch.value.awayBehinds++
+          }
+
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'behind',
+            team: scoringTeam,
+            message: `Behind to ${scoringTeam}`
+          })
+        }
       }
     }
 
     // Injury chance (rare)
-    if (eventChance > 0.995) {
+    if (eventChance > 0.998) {
       const randomPlayer = squad.value[Math.floor(Math.random() * squad.value.length)]
       randomPlayer.injured = true
       currentMatch.value.events.unshift({
         minute: currentMatch.value.minute,
+        quarter: currentMatch.value.quarter,
         type: 'injury',
         player: randomPlayer.name,
         message: `🚑 ${randomPlayer.name} is injured!`
@@ -191,51 +248,57 @@ const endMatch = () => {
     }
   })
 
+  // Calculate AFL scores (goals * 6 + behinds)
+  const homeTotal = currentMatch.value.homeGoals * 6 + currentMatch.value.homeBehinds
+  const awayTotal = currentMatch.value.awayGoals * 6 + currentMatch.value.awayBehinds
+
   // Update standings
   const ourTeam = standings.value.find(t => t.team === teamName.value)
   const opponentTeam = standings.value.find(t => t.team === currentMatch.value.opponent)
 
-  const ourScore = currentMatch.value.isHome ? currentMatch.value.homeScore : currentMatch.value.awayScore
-  const theirScore = currentMatch.value.isHome ? currentMatch.value.awayScore : currentMatch.value.homeScore
+  const ourScore = currentMatch.value.isHome ? homeTotal : awayTotal
+  const theirScore = currentMatch.value.isHome ? awayTotal : homeTotal
 
   // Update our team
   ourTeam.played++
-  ourTeam.gf += ourScore
-  ourTeam.ga += theirScore
-  ourTeam.gd = ourTeam.gf - ourTeam.ga
+  ourTeam.pointsFor += ourScore
+  ourTeam.pointsAgainst += theirScore
 
   // Update opponent
   opponentTeam.played++
-  opponentTeam.gf += theirScore
-  opponentTeam.ga += ourScore
-  opponentTeam.gd = opponentTeam.gf - opponentTeam.ga
+  opponentTeam.pointsFor += theirScore
+  opponentTeam.pointsAgainst += ourScore
 
   if (ourScore > theirScore) {
     ourTeam.won++
-    ourTeam.points += 3
+    ourTeam.premiership += 4 // 4 premiership points for a win
     opponentTeam.lost++
     currentMatch.value.events.unshift({
       type: 'result',
-      message: `🏆 Victory! Final score: ${currentMatch.value.homeScore} - ${currentMatch.value.awayScore}`
+      message: `🏆 Victory! Final: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal})`
     })
   } else if (ourScore < theirScore) {
     ourTeam.lost++
     opponentTeam.won++
-    opponentTeam.points += 3
+    opponentTeam.premiership += 4
     currentMatch.value.events.unshift({
       type: 'result',
-      message: `😞 Defeat. Final score: ${currentMatch.value.homeScore} - ${currentMatch.value.awayScore}`
+      message: `😞 Defeat. Final: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal})`
     })
   } else {
     ourTeam.drawn++
-    ourTeam.points++
+    ourTeam.premiership += 2 // 2 premiership points for a draw
     opponentTeam.drawn++
-    opponentTeam.points++
+    opponentTeam.premiership += 2
     currentMatch.value.events.unshift({
       type: 'result',
-      message: `🤝 Draw. Final score: ${currentMatch.value.homeScore} - ${currentMatch.value.awayScore}`
+      message: `🤝 Draw! Final: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal})`
     })
   }
+
+  // Calculate percentage (AFL style: pointsFor / pointsAgainst * 100)
+  ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100).toFixed(2) : 100
+  opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100).toFixed(2) : 100
 
   // Toggle home/away for next match
   currentMatch.value.isHome = !currentMatch.value.isHome
@@ -254,16 +317,16 @@ const resetSeason = () => {
     team.won = 0
     team.drawn = 0
     team.lost = 0
-    team.gf = 0
-    team.ga = 0
-    team.gd = 0
-    team.points = 0
+    team.pointsFor = 0
+    team.pointsAgainst = 0
+    team.percentage = 100
+    team.premiership = 0
   })
 
   // Reset player stats
   squad.value.forEach(player => {
     player.goals = 0
-    player.assists = 0
+    player.behinds = 0
     player.matches = 0
     player.injured = false
   })
@@ -273,8 +336,11 @@ const resetSeason = () => {
     opponent: '',
     homeTeam: teamName.value,
     awayTeam: '',
-    homeScore: 0,
-    awayScore: 0,
+    homeGoals: 0,
+    homeBehinds: 0,
+    awayGoals: 0,
+    awayBehinds: 0,
+    quarter: 1,
     minute: 0,
     events: [],
     isHome: true
@@ -285,10 +351,10 @@ const resetSeason = () => {
 <template>
   <div class="football-manager">
     <header class="manager-header">
-      <h1>⚽ {{ teamName }}</h1>
+      <h1>🏉 {{ teamName }}</h1>
       <div class="header-stats">
         <span class="stat">Overall: {{ teamOverall }}</span>
-        <span class="stat">Budget: €{{ (budget / 1000000).toFixed(1) }}M</span>
+        <span class="stat">Budget: ${{ (budget / 1000000).toFixed(1) }}M</span>
         <span class="stat">Reputation: {{ reputation }}</span>
       </div>
     </header>
@@ -335,11 +401,11 @@ const resetSeason = () => {
           <h3>{{ player.name }}</h3>
           <div class="player-stats">
             <span>Age: {{ player.age }}</span>
-            <span>Value: €{{ (player.value / 1000000).toFixed(1) }}M</span>
+            <span>Value: ${{ (player.value / 1000000).toFixed(1) }}M</span>
           </div>
           <div class="player-performance">
-            <span>⚽ {{ player.goals }}</span>
-            <span>🎯 {{ player.assists }}</span>
+            <span>🏉 {{ player.goals }}</span>
+            <span>📊 {{ player.behinds }}</span>
             <span>🎮 {{ player.matches }}</span>
           </div>
           <div v-if="player.injured" class="injury-badge">🚑 INJURED</div>
@@ -369,14 +435,21 @@ const resetSeason = () => {
         <div class="scoreboard">
           <div class="team home">
             <h2>{{ currentMatch.homeTeam }}</h2>
-            <span class="score">{{ currentMatch.homeScore }}</span>
+            <div class="score-display">
+              <span class="score-line">{{ currentMatch.homeGoals }}.{{ currentMatch.homeBehinds }}</span>
+              <span class="total-score">({{ currentMatch.homeGoals * 6 + currentMatch.homeBehinds }})</span>
+            </div>
           </div>
           <div class="match-time">
-            <span class="minute">{{ currentMatch.minute }}'</span>
+            <span class="quarter-label">Q{{ currentMatch.quarter }}</span>
+            <span class="minute">{{ currentMatch.minute % 30 || 30 }}'</span>
           </div>
           <div class="team away">
             <h2>{{ currentMatch.awayTeam }}</h2>
-            <span class="score">{{ currentMatch.awayScore }}</span>
+            <div class="score-display">
+              <span class="score-line">{{ currentMatch.awayGoals }}.{{ currentMatch.awayBehinds }}</span>
+              <span class="total-score">({{ currentMatch.awayGoals * 6 + currentMatch.awayBehinds }})</span>
+            </div>
           </div>
         </div>
 
@@ -411,9 +484,9 @@ const resetSeason = () => {
             <th>W</th>
             <th>D</th>
             <th>L</th>
-            <th>GF</th>
-            <th>GA</th>
-            <th>GD</th>
+            <th>PF</th>
+            <th>PA</th>
+            <th>%</th>
             <th>Pts</th>
           </tr>
         </thead>
@@ -428,12 +501,12 @@ const resetSeason = () => {
             <td>{{ team.won }}</td>
             <td>{{ team.drawn }}</td>
             <td>{{ team.lost }}</td>
-            <td>{{ team.gf }}</td>
-            <td>{{ team.ga }}</td>
-            <td :class="{ positive: team.gd > 0, negative: team.gd < 0 }">
-              {{ team.gd > 0 ? '+' : '' }}{{ team.gd }}
+            <td>{{ team.pointsFor }}</td>
+            <td>{{ team.pointsAgainst }}</td>
+            <td :class="{ positive: team.percentage > 100, negative: team.percentage < 100 }">
+              {{ team.percentage }}
             </td>
-            <td class="points">{{ team.points }}</td>
+            <td class="points">{{ team.premiership }}</td>
           </tr>
         </tbody>
       </table>
@@ -442,9 +515,9 @@ const resetSeason = () => {
     <!-- Statistics Tab -->
     <div v-if="activeTab === 'stats'" class="tab-content">
       <div class="stats-section">
-        <h2>Top Scorers</h2>
+        <h2>Top Goal Kickers</h2>
         <div v-if="topScorers.length === 0" class="empty-state">
-          No goals scored yet. Play some matches!
+          No goals kicked yet. Play some matches!
         </div>
         <div v-else class="top-scorers">
           <div
@@ -454,7 +527,7 @@ const resetSeason = () => {
             <span class="rank">{{ index + 1 }}</span>
             <span class="scorer-name">{{ player.name }}</span>
             <span class="scorer-position">{{ player.position }}</span>
-            <span class="scorer-goals">⚽ {{ player.goals }}</span>
+            <span class="scorer-goals">🏉 {{ player.goals }}</span>
           </div>
         </div>
 
@@ -473,7 +546,7 @@ const resetSeason = () => {
             <p>Injured</p>
           </div>
           <div class="overview-stat">
-            <h3>€{{ (squad.reduce((sum, p) => sum + p.value, 0) / 1000000).toFixed(0) }}M</h3>
+            <h3>${{ (squad.reduce((sum, p) => sum + p.value, 0) / 1000000).toFixed(0) }}M</h3>
             <p>Squad Value</p>
           </div>
         </div>
@@ -725,19 +798,43 @@ const resetSeason = () => {
   font-size: 1.5rem;
 }
 
-.scoreboard .score {
+.score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-line {
   font-size: 3rem;
   font-weight: 700;
+}
+
+.total-score {
+  font-size: 1.5rem;
+  opacity: 0.9;
 }
 
 .match-time {
   flex: 0 0 120px;
   text-align: center;
-  font-size: 2rem;
-  font-weight: 700;
   background: rgba(255, 255, 255, 0.2);
   padding: 1rem;
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quarter-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.minute {
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .match-events {
@@ -771,6 +868,17 @@ const resetSeason = () => {
 .event.goal {
   border-left-color: #4caf50;
   background: #f1f8f4;
+}
+
+.event.behind {
+  border-left-color: #2196f3;
+  background: #f1f8ff;
+}
+
+.event.quarter {
+  border-left-color: #ff9800;
+  background: #fff8f1;
+  font-weight: 600;
 }
 
 .event.injury {
