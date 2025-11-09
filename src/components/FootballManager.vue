@@ -5,6 +5,13 @@ import { ref, computed } from 'vue'
 const activeTab = ref('squad')
 const simulationSpeed = ref(500)
 
+// Function to switch tabs and scroll to top (like Football Manager)
+const switchTab = (tabName) => {
+  activeTab.value = tabName
+  // Scroll to top of page smoothly
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 // Team data
 const teamName = ref('Melbourne Demons')
 const budget = ref(50000000)
@@ -1401,63 +1408,63 @@ const getOrdinalSuffix = (num) => {
 
     <nav class="tabs">
       <button
-        @click="activeTab = 'dashboard'"
+        @click="switchTab('dashboard')"
         :class="{ active: activeTab === 'dashboard' }">
         Dashboard
       </button>
       <button
-        @click="activeTab = 'squad'"
+        @click="switchTab('squad')"
         :class="{ active: activeTab === 'squad' }">
         Squad
       </button>
       <button
-        @click="activeTab = 'match'"
+        @click="switchTab('match')"
         :class="{ active: activeTab === 'match' }">
         Match
       </button>
       <button
-        @click="activeTab = 'standings'"
+        @click="switchTab('standings')"
         :class="{ active: activeTab === 'standings' }">
         League
       </button>
       <button
-        @click="activeTab = 'stats'"
+        @click="switchTab('stats')"
         :class="{ active: activeTab === 'stats' }">
         Statistics
       </button>
       <button
-        @click="activeTab = 'inbox'"
+        @click="switchTab('inbox')"
         :class="{ active: activeTab === 'inbox' }">
         Inbox
         <span v-if="unreadMessages > 0" class="badge">{{ unreadMessages }}</span>
       </button>
       <button
-        @click="activeTab = 'staff'"
+        @click="switchTab('staff')"
         :class="{ active: activeTab === 'staff' }">
         Staff
       </button>
       <button
-        @click="activeTab = 'finances'"
+        @click="switchTab('finances')"
         :class="{ active: activeTab === 'finances' }">
         Finances
       </button>
       <button
-        @click="activeTab = 'chat'"
+        @click="switchTab('chat')"
         :class="{ active: activeTab === 'chat' }">
         Chat
       </button>
       <button
-        @click="activeTab = 'calendar'"
+        @click="switchTab('calendar')"
         :class="{ active: activeTab === 'calendar' }">
         Calendar
       </button>
       <button
-        @click="activeTab = 'tactics'"
+        @click="switchTab('tactics')"
         :class="{ active: activeTab === 'tactics' }">
         Tactics
       </button>
       <button
-        @click="activeTab = 'board'"
+        @click="switchTab('board')"
         :class="{ active: activeTab === 'board' }">
         Board
       </button>
