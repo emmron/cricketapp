@@ -65,6 +65,40 @@ const standings = ref([
   { team: 'West Coast Eagles', played: 0, won: 0, drawn: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, percentage: 100, premiership: 0 }
 ])
 
+// Staff management
+const staff = ref([
+  { id: 1, name: 'David Johnson', role: 'Assistant Coach', rating: 85, salary: 250000, morale: 80 },
+  { id: 2, name: 'Sarah Williams', role: 'Fitness Coach', rating: 82, salary: 180000, morale: 85 },
+  { id: 3, name: 'Michael Chen', role: 'Sports Scientist', rating: 88, salary: 200000, morale: 75 },
+  { id: 4, name: 'Emma Roberts', role: 'Physio', rating: 90, salary: 220000, morale: 90 }
+])
+
+// Financial tracking
+const finances = ref({
+  weeklyIncome: 500000,
+  weeklyExpenses: 0,
+  weeklyWages: 0,
+  matchDayRevenue: 0,
+  totalIncome: 0,
+  totalExpenses: 0,
+  week: 1
+})
+
+// Media/Inbox system
+const inbox = ref([
+  {
+    id: 1,
+    date: 'Week 1',
+    from: 'AFL Media',
+    subject: 'Welcome to AFL Management',
+    message: 'Welcome to your new role as manager of Melbourne Demons! The board expects great things from you this season.',
+    read: false,
+    type: 'news'
+  }
+])
+
+const nextInboxId = ref(2)
+
 // Computed properties
 const sortedStandings = computed(() => {
   return [...standings.value].sort((a, b) => {
@@ -90,6 +124,20 @@ const availableOpponents = computed(() => {
   return standings.value
     .filter(team => team.team !== teamName.value)
     .map(team => team.team)
+})
+
+const unreadMessages = computed(() => {
+  return inbox.value.filter(msg => !msg.read).length
+})
+
+const totalWeeklyWages = computed(() => {
+  const playerWages = squad.value.reduce((sum, player) => sum + (player.value * 0.001), 0) // 0.1% of value as weekly wage
+  const staffWages = staff.value.reduce((sum, member) => sum + (member.salary / 52), 0) // Annual salary / 52 weeks
+  return Math.round(playerWages + staffWages)
+})
+
+const weeklyBalance = computed(() => {
+  return finances.value.weeklyIncome - totalWeeklyWages.value
 })
 
 // Match simulation functions
@@ -300,6 +348,21 @@ const endMatch = () => {
   ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100).toFixed(2) : 100
   opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100).toFixed(2) : 100
 
+  // Add match day revenue
+  const attendance = Math.floor(Math.random() * 30000) + 20000
+  const matchRevenue = attendance * 50 // $50 per ticket
+  finances.value.matchDayRevenue += matchRevenue
+  budget.value += matchRevenue
+
+  // Generate match report for inbox
+  const result = ourScore > theirScore ? 'Victory' : ourScore < theirScore ? 'Defeat' : 'Draw'
+  addInboxMessage({
+    from: 'Match Report',
+    subject: `${result} vs ${currentMatch.value.opponent}`,
+    message: `Final Score: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal}). Attendance: ${attendance.toLocaleString()}. Revenue: $${matchRevenue.toLocaleString()}`,
+    type: 'match'
+  })
+
   // Toggle home/away for next match
   currentMatch.value.isHome = !currentMatch.value.isHome
 }
@@ -346,6 +409,80 @@ const resetSeason = () => {
     isHome: true
   }
 }
+
+// Inbox/Media functions
+const addInboxMessage = (messageData) => {
+  inbox.value.unshift({
+    id: nextInboxId.value++,
+    date: `Week ${finances.value.week}`,
+    read: false,
+    ...messageData
+  })
+}
+
+const markAsRead = (messageId) => {
+  const message = inbox.value.find(m => m.id === messageId)
+  if (message) {
+    message.read = true
+  }
+}
+
+const deleteMessage = (messageId) => {
+  const index = inbox.value.findIndex(m => m.id === messageId)
+  if (index !== -1) {
+    inbox.value.splice(index, 1)
+  }
+}
+
+// Staff management functions
+const fireStaff = (staffId) => {
+  const staffIndex = staff.value.findIndex(s => s.id === staffId)
+  if (staffIndex !== -1) {
+    const staffMember = staff.value[staffIndex]
+    staff.value.splice(staffIndex, 1)
+    addInboxMessage({
+      from: 'HR Department',
+      subject: `${staffMember.name} Released`,
+      message: `${staffMember.name} (${staffMember.role}) has been released from their contract.`,
+      type: 'staff'
+    })
+  }
+}
+
+const boostStaffMorale = (staffId) => {
+  const staffMember = staff.value.find(s => s.id === staffId)
+  if (staffMember && budget.value >= 10000) {
+    budget.value -= 10000
+    staffMember.morale = Math.min(100, staffMember.morale + 10)
+    addInboxMessage({
+      from: 'HR Department',
+      subject: 'Staff Bonus Paid',
+      message: `You paid a $10,000 bonus to ${staffMember.name}. Their morale improved!`,
+      type: 'staff'
+    })
+  }
+}
+
+// Financial functions
+const processWeeklyFinances = () => {
+  finances.value.week++
+
+  // Deduct weekly wages
+  budget.value -= totalWeeklyWages.value
+  finances.value.totalExpenses += totalWeeklyWages.value
+
+  // Add weekly income
+  budget.value += finances.value.weeklyIncome
+  finances.value.totalIncome += finances.value.weeklyIncome
+
+  // Generate weekly report
+  addInboxMessage({
+    from: 'Finance Department',
+    subject: `Week ${finances.value.week} Financial Report`,
+    message: `Income: $${finances.value.weeklyIncome.toLocaleString()}\nWages: $${totalWeeklyWages.value.toLocaleString()}\nNet: $${weeklyBalance.value.toLocaleString()}\n\nCurrent Balance: $${budget.value.toLocaleString()}`,
+    type: 'finance'
+  })
+}
 </script>
 
 <template>
@@ -379,6 +516,22 @@ const resetSeason = () => {
         @click="activeTab = 'stats'"
         :class="{ active: activeTab === 'stats' }">
         Statistics
+      </button>
+      <button
+        @click="activeTab = 'inbox'"
+        :class="{ active: activeTab === 'inbox' }">
+        Inbox
+        <span v-if="unreadMessages > 0" class="badge">{{ unreadMessages }}</span>
+      </button>
+      <button
+        @click="activeTab = 'staff'"
+        :class="{ active: activeTab === 'staff' }">
+        Staff
+      </button>
+      <button
+        @click="activeTab = 'finances'"
+        :class="{ active: activeTab === 'finances' }">
+        Finances
       </button>
     </nav>
 
@@ -548,6 +701,140 @@ const resetSeason = () => {
           <div class="overview-stat">
             <h3>${{ (squad.reduce((sum, p) => sum + p.value, 0) / 1000000).toFixed(0) }}M</h3>
             <p>Squad Value</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inbox Tab -->
+    <div v-if="activeTab === 'inbox'" class="tab-content">
+      <div class="inbox-header">
+        <h2>Inbox</h2>
+        <span class="unread-count">{{ unreadMessages }} unread</span>
+      </div>
+
+      <div class="inbox-list">
+        <div v-if="inbox.length === 0" class="empty-state">
+          No messages yet!
+        </div>
+        <div
+          v-for="message in inbox"
+          :key="message.id"
+          class="message-card"
+          :class="{ unread: !message.read }"
+          @click="markAsRead(message.id)">
+          <div class="message-header">
+            <span class="message-from">{{ message.from }}</span>
+            <span class="message-date">{{ message.date }}</span>
+          </div>
+          <h3 class="message-subject">{{ message.subject }}</h3>
+          <p class="message-preview">{{ message.message }}</p>
+          <div class="message-actions">
+            <span :class="`message-type type-${message.type}`">{{ message.type }}</span>
+            <button @click.stop="deleteMessage(message.id)" class="delete-btn">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Staff Tab -->
+    <div v-if="activeTab === 'staff'" class="tab-content">
+      <div class="staff-header">
+        <h2>Coaching Staff</h2>
+        <p class="staff-count">{{ staff.length }} staff members</p>
+      </div>
+
+      <div class="staff-grid">
+        <div
+          v-for="member in staff"
+          :key="member.id"
+          class="staff-card">
+          <div class="staff-header-info">
+            <h3>{{ member.name }}</h3>
+            <span class="staff-role">{{ member.role }}</span>
+          </div>
+          <div class="staff-stats">
+            <div class="stat-item">
+              <span class="stat-label">Rating</span>
+              <span class="stat-value">{{ member.rating }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Morale</span>
+              <span class="stat-value" :class="{ low: member.morale < 50, medium: member.morale >= 50 && member.morale < 75, high: member.morale >= 75 }">
+                {{ member.morale }}%
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Salary</span>
+              <span class="stat-value">${{ (member.salary / 1000).toFixed(0) }}k/yr</span>
+            </div>
+          </div>
+          <div class="staff-actions">
+            <button @click="boostStaffMorale(member.id)" class="action-btn small">
+              Bonus ($10k)
+            </button>
+            <button @click="fireStaff(member.id)" class="action-btn small danger">
+              Release
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Finances Tab -->
+    <div v-if="activeTab === 'finances'" class="tab-content">
+      <div class="finances-header">
+        <h2>Financial Overview</h2>
+        <button @click="processWeeklyFinances" class="action-btn">Advance Week</button>
+      </div>
+
+      <div class="finance-summary">
+        <div class="finance-card">
+          <h3>Current Balance</h3>
+          <p class="finance-amount">${{ (budget / 1000000).toFixed(2) }}M</p>
+        </div>
+        <div class="finance-card">
+          <h3>Week {{ finances.week }}</h3>
+          <p class="finance-label">Current Week</p>
+        </div>
+        <div class="finance-card">
+          <h3>${{ (totalWeeklyWages / 1000).toFixed(1) }}k</h3>
+          <p class="finance-label">Weekly Wages</p>
+        </div>
+        <div class="finance-card">
+          <h3 :class="{ positive: weeklyBalance > 0, negative: weeklyBalance < 0 }">
+            ${{ (weeklyBalance / 1000).toFixed(1) }}k
+          </h3>
+          <p class="finance-label">Weekly Balance</p>
+        </div>
+      </div>
+
+      <div class="finance-breakdown">
+        <h3>Income & Expenses</h3>
+        <div class="finance-table">
+          <div class="finance-row">
+            <span class="finance-label">Weekly Income</span>
+            <span class="finance-value positive">${{ finances.weeklyIncome.toLocaleString() }}</span>
+          </div>
+          <div class="finance-row">
+            <span class="finance-label">Player Wages</span>
+            <span class="finance-value negative">-${{ Math.round(squad.reduce((sum, player) => sum + (player.value * 0.001), 0)).toLocaleString() }}</span>
+          </div>
+          <div class="finance-row">
+            <span class="finance-label">Staff Wages</span>
+            <span class="finance-value negative">-${{ Math.round(staff.reduce((sum, member) => sum + (member.salary / 52), 0)).toLocaleString() }}</span>
+          </div>
+          <div class="finance-row">
+            <span class="finance-label">Match Day Revenue (Season)</span>
+            <span class="finance-value positive">${{ finances.matchDayRevenue.toLocaleString() }}</span>
+          </div>
+          <div class="finance-row total">
+            <span class="finance-label">Total Income (Season)</span>
+            <span class="finance-value positive">${{ finances.totalIncome.toLocaleString() }}</span>
+          </div>
+          <div class="finance-row total">
+            <span class="finance-label">Total Expenses (Season)</span>
+            <span class="finance-value negative">-${{ finances.totalExpenses.toLocaleString() }}</span>
           </div>
         </div>
       </div>
@@ -1068,31 +1355,689 @@ const resetSeason = () => {
   letter-spacing: 1px;
 }
 
+/* Inbox Tab */
+.inbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.inbox-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.unread-count {
+  background: #ff6b6b;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.message-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.message-card.unread {
+  background: #f1f8ff;
+  border-color: #2196f3;
+  font-weight: 600;
+}
+
+.message-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.message-from {
+  font-weight: 600;
+  color: #1e3c72;
+}
+
+.message-subject {
+  margin: 0.5rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.message-preview {
+  color: #666;
+  line-height: 1.5;
+  margin: 0.5rem 0;
+  white-space: pre-line;
+}
+
+.message-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.message-type {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.type-news { background: #e3f2fd; color: #2196f3; }
+.type-match { background: #e8f5e9; color: #4caf50; }
+.type-staff { background: #fff8e1; color: #ff9800; }
+.type-finance { background: #f3e5f5; color: #9c27b0; }
+
+.delete-btn {
+  padding: 0.5rem 1rem;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.delete-btn:hover {
+  background: #ff5252;
+  transform: translateY(-1px);
+}
+
+.badge {
+  background: #ff6b6b;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  font-weight: 700;
+}
+
+/* Staff Tab */
+.staff-header {
+  margin-bottom: 1.5rem;
+}
+
+.staff-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.staff-count {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.staff-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.staff-card:hover {
+  border-color: #1e3c72;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.staff-header-info {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.staff-header-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.staff-role {
+  background: #1e3c72;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.staff-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.stat-value.low { color: #ff6b6b; }
+.stat-value.medium { color: #ff9800; }
+.stat-value.high { color: #4caf50; }
+
+.staff-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn.small {
+  padding: 0.625rem 1rem;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.action-btn.danger {
+  background: #ff6b6b;
+}
+
+.action-btn.danger:hover {
+  background: #ff5252;
+}
+
+/* Finances Tab */
+.finances-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.finances-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.finance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.finance-card {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.finance-card h3 {
+  margin: 0;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.finance-amount {
+  margin: 0.5rem 0 0 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.finance-label {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.finance-breakdown {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.finance-breakdown h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.finance-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.finance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.finance-row.total {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.finance-row.total .finance-value {
+  color: white;
+}
+
+.finance-value.positive {
+  color: #4caf50;
+  font-weight: 700;
+}
+
+.finance-value.negative {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+h3.positive {
+  color: #4caf50;
+}
+
+h3.negative {
+  color: #ff6b6b;
+}
+
+/* Mobile Responsive Design */
 @media (max-width: 768px) {
+  .football-manager {
+    padding: 0.5rem;
+  }
+
+  /* Header */
+  .manager-header {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+  }
+
   .manager-header h1 {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .header-stats {
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .header-stats .stat {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 1rem;
+    gap: 0.25rem;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tabs button {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    min-width: auto;
   }
 
+  /* Squad Grid */
   .squad-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .player-card {
+    padding: 0.875rem;
+  }
+
+  .player-card h3 {
+    font-size: 1rem;
+  }
+
+  .player-stats,
+  .player-performance {
+    font-size: 0.8rem;
+  }
+
+  /* Match Setup */
+  .match-setup {
+    padding: 1rem;
+  }
+
+  .match-setup h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .opponent-select {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .opponent-btn {
+    padding: 1.25rem;
+    font-size: 0.95rem;
+    min-height: 56px; /* Touch-friendly height */
+  }
+
+  .random-match {
+    padding: 1.25rem 2rem;
+    font-size: 1.1rem;
+    min-height: 56px;
+  }
+
+  /* Scoreboard */
+  .match-simulation {
+    padding: 0.5rem;
   }
 
   .scoreboard {
     flex-direction: column;
     gap: 1rem;
+    padding: 1.25rem;
   }
 
   .scoreboard .team h2 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
   }
 
-  .scoreboard .score {
+  .score-line {
+    font-size: 2.5rem;
+  }
+
+  .total-score {
+    font-size: 1.3rem;
+  }
+
+  .match-time {
+    flex: none;
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  .quarter-label {
+    font-size: 1rem;
+  }
+
+  .minute {
+    font-size: 1.5rem;
+  }
+
+  /* Match Events */
+  .match-events {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .match-events h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .events-list {
+    max-height: 300px;
+  }
+
+  .event {
+    padding: 0.625rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .event-minute {
+    min-width: 35px;
+  }
+
+  /* Standings Table */
+  .standings-table {
+    font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .standings-table thead,
+  .standings-table tbody,
+  .standings-table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .standings-table th,
+  .standings-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .standings-table th:first-child,
+  .standings-table td:first-child {
+    width: 40px;
+  }
+
+  .standings-table .team-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Statistics */
+  .stats-section {
+    padding: 1rem;
+  }
+
+  .stats-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .scorer-row {
+    padding: 0.875rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .scorer-row .rank {
+    font-size: 1.3rem;
+    min-width: 35px;
+  }
+
+  .scorer-row .scorer-goals {
+    font-size: 1.1rem;
+  }
+
+  .squad-overview {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .overview-stat {
+    padding: 1.25rem;
+  }
+
+  .overview-stat h3 {
     font-size: 2rem;
+  }
+
+  .overview-stat p {
+    font-size: 0.8rem;
+  }
+
+  /* Action Buttons */
+  .action-btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+    min-height: 48px;
+  }
+
+  .squad-controls,
+  .standings-controls {
+    margin-bottom: 1rem;
+  }
+
+  /* New features mobile */
+  .inbox-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .message-card {
+    padding: 1rem;
+  }
+
+  .message-subject {
+    font-size: 1rem;
+  }
+
+  .staff-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .staff-card {
+    padding: 1.25rem;
+  }
+
+  .finances-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .finance-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .finance-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .finance-amount {
+    font-size: 2rem;
+  }
+
+  .finance-breakdown {
+    padding: 1rem;
+  }
+
+  .finance-row {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .manager-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-stats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .tabs button {
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .score-line {
+    font-size: 2rem;
+  }
+
+  .total-score {
+    font-size: 1.1rem;
+  }
+
+  .squad-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .standings-table {
+    font-size: 0.7rem;
+  }
+
+  .standings-table th,
+  .standings-table td {
+    padding: 0.625rem 0.4rem;
+  }
+
+  .finance-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-card h3 {
+    font-size: 1.3rem;
+  }
+
+  .finance-amount {
+    font-size: 1.75rem;
+  }
+
+  .message-card {
+    padding: 0.875rem;
   }
 }
 </style>

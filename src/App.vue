@@ -44,11 +44,29 @@ import FootballManager from './components/FootballManager.vue'
 
 @media (max-width: 768px) {
   .main-content {
-    padding: 1rem 0.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .app-footer {
+    padding: 1rem;
   }
 
   .footer-text {
     font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 0.25rem 0;
+  }
+
+  .app-footer {
+    padding: 0.875rem 0.5rem;
+  }
+
+  .footer-text {
+    font-size: 0.7rem;
   }
 }
 </style>
