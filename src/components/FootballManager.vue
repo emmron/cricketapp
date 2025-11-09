@@ -1068,31 +1068,288 @@ const resetSeason = () => {
   letter-spacing: 1px;
 }
 
+/* Mobile Responsive Design */
 @media (max-width: 768px) {
+  .football-manager {
+    padding: 0.5rem;
+  }
+
+  /* Header */
+  .manager-header {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+  }
+
   .manager-header h1 {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .header-stats {
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .header-stats .stat {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 1rem;
+    gap: 0.25rem;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tabs button {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    min-width: auto;
   }
 
+  /* Squad Grid */
   .squad-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .player-card {
+    padding: 0.875rem;
+  }
+
+  .player-card h3 {
+    font-size: 1rem;
+  }
+
+  .player-stats,
+  .player-performance {
+    font-size: 0.8rem;
+  }
+
+  /* Match Setup */
+  .match-setup {
+    padding: 1rem;
+  }
+
+  .match-setup h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .opponent-select {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .opponent-btn {
+    padding: 1.25rem;
+    font-size: 0.95rem;
+    min-height: 56px; /* Touch-friendly height */
+  }
+
+  .random-match {
+    padding: 1.25rem 2rem;
+    font-size: 1.1rem;
+    min-height: 56px;
+  }
+
+  /* Scoreboard */
+  .match-simulation {
+    padding: 0.5rem;
   }
 
   .scoreboard {
     flex-direction: column;
     gap: 1rem;
+    padding: 1.25rem;
   }
 
   .scoreboard .team h2 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
   }
 
-  .scoreboard .score {
+  .score-line {
+    font-size: 2.5rem;
+  }
+
+  .total-score {
+    font-size: 1.3rem;
+  }
+
+  .match-time {
+    flex: none;
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  .quarter-label {
+    font-size: 1rem;
+  }
+
+  .minute {
+    font-size: 1.5rem;
+  }
+
+  /* Match Events */
+  .match-events {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .match-events h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .events-list {
+    max-height: 300px;
+  }
+
+  .event {
+    padding: 0.625rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .event-minute {
+    min-width: 35px;
+  }
+
+  /* Standings Table */
+  .standings-table {
+    font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .standings-table thead,
+  .standings-table tbody,
+  .standings-table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .standings-table th,
+  .standings-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .standings-table th:first-child,
+  .standings-table td:first-child {
+    width: 40px;
+  }
+
+  .standings-table .team-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Statistics */
+  .stats-section {
+    padding: 1rem;
+  }
+
+  .stats-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .scorer-row {
+    padding: 0.875rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .scorer-row .rank {
+    font-size: 1.3rem;
+    min-width: 35px;
+  }
+
+  .scorer-row .scorer-goals {
+    font-size: 1.1rem;
+  }
+
+  .squad-overview {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .overview-stat {
+    padding: 1.25rem;
+  }
+
+  .overview-stat h3 {
     font-size: 2rem;
+  }
+
+  .overview-stat p {
+    font-size: 0.8rem;
+  }
+
+  /* Action Buttons */
+  .action-btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+    min-height: 48px;
+  }
+
+  .squad-controls,
+  .standings-controls {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .manager-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-stats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .tabs button {
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .score-line {
+    font-size: 2rem;
+  }
+
+  .total-score {
+    font-size: 1.1rem;
+  }
+
+  .squad-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .standings-table {
+    font-size: 0.7rem;
+  }
+
+  .standings-table th,
+  .standings-table td {
+    padding: 0.625rem 0.4rem;
   }
 }
 </style>
