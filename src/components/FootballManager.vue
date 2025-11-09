@@ -269,6 +269,111 @@ const weeklyBalance = computed(() => {
   return finances.value.weeklyIncome - totalWeeklyWages.value
 })
 
+// Enhanced Match Engine with Tactical Depth
+const calculateTeamStrength = (isOurTeam) => {
+  if (!isOurTeam) {
+    // Opponent strength (70-85 range, can get from scout report)
+    const opponent = currentMatch.value.opponent
+    const scoutData = scoutReports.value[opponent]
+    return scoutData ? scoutData.rating : 75
+  }
+
+  // Calculate our team strength based on multiple factors
+  const availablePlayers = squad.value.filter(p => !p.injured && !p.suspended)
+
+  let strength = 0
+  let playerCount = 0
+
+  availablePlayers.forEach(player => {
+    // Base from overall rating
+    let playerStrength = player.overall
+
+    // Form modifier (-10 to +10)
+    playerStrength += (player.form - 7) * 3
+
+    // Morale modifier (-5 to +5)
+    playerStrength += (player.morale - 75) / 5
+
+    // Fitness modifier (-10 to 0)
+    if (player.fitness < 90) {
+      playerStrength -= (90 - player.fitness) / 5
+    }
+
+    strength += playerStrength
+    playerCount++
+  })
+
+  return playerCount > 0 ? strength / playerCount : 70
+}
+
+const getTacticalModifier = (attacking) => {
+  let modifier = 0
+
+  // Formation impact
+  if (attacking) {
+    if (tactics.value.formation === 'Attacking') modifier += 0.15
+    if (tactics.value.formation === 'Defensive') modifier -= 0.1
+  } else {
+    if (tactics.value.formation === 'Defensive') modifier += 0.15
+    if (tactics.value.formation === 'Attacking') modifier -= 0.1
+  }
+
+  // Playing style impact
+  if (attacking) {
+    if (tactics.value.playingStyle === 'Direct') modifier += 0.1
+    if (tactics.value.playingStyle === 'Counter-Attack') modifier += 0.05
+  }
+
+  // Tempo impact
+  if (tactics.value.tempo === 'Fast') modifier += 0.05
+  if (tactics.value.tempo === 'Slow') modifier -= 0.05
+
+  // Pressing impact on defense
+  if (!attacking) {
+    if (tactics.value.pressing === 'High') modifier += 0.1
+    if (tactics.value.pressing === 'Low') modifier -= 0.05
+  }
+
+  return 1 + modifier
+}
+
+const simulateMatchTick = () => {
+  const ourStrength = calculateTeamStrength(true)
+  const opponentStrength = calculateTeamStrength(false)
+
+  // Apply tactical modifiers
+  const ourAttack = ourStrength * getTacticalModifier(true)
+  const ourDefense = ourStrength * getTacticalModifier(false)
+  const oppAttack = opponentStrength * (1 + (Math.random() * 0.2 - 0.1)) // Small random variance
+  const oppDefense = opponentStrength * (1 + (Math.random() * 0.2 - 0.1))
+
+  // Calculate possession chance (0-1)
+  const totalStrength = ourStrength + opponentStrength
+  const ourPossessionChance = ourStrength / totalStrength
+
+  // Home advantage
+  const homeBonus = currentMatch.value.isHome ? 0.05 : -0.05
+  const adjustedChance = ourPossessionChance + homeBonus
+
+  // Determine who has possession
+  const wePossess = Math.random() < adjustedChance
+
+  // Scoring attempt chance based on tactics and strength
+  const baseChance = 0.04 // 4% per minute
+  const attackingBonus = wePossess ?
+    (ourAttack / oppDefense) * baseChance :
+    (oppAttack / ourDefense) * baseChance
+
+  return {
+    scoringChance: attackingBonus,
+    wePossess: wePossess,
+    ourAttack,
+    ourDefense,
+    oppAttack,
+    oppDefense
+  }
+}
+
 // Match simulation functions
 const startMatch = (opponentName) => {
   if (!opponentName) {
@@ -287,7 +392,9 @@ const startMatch = (opponentName) => {
     quarter: 1,
     minute: 0,
     events: [],
-    isHome: currentMatch.value.isHome
+    isHome: currentMatch.value.isHome,
+    possession: { home: 0, away: 0 },
+    momentum: 0 // -100 to 100, positive favors home team
   }
 
   simulateMatch()
@@ -309,9 +416,9 @@ const simulateMatch = () => {
     // Update quarter display
     currentMatch.value.quarter = Math.ceil(currentMatch.value.minute / 30)
 
-    // Quarter time breaks (skip scoring during these times)
+    // Quarter time breaks
     const minuteInQuarter = currentMatch.value.minute % 30
-    if (minuteInQuarter === 0) {
+    if (minuteInQuarter === 0 && currentMatch.value.quarter < 5) {
       currentMatch.value.events.unshift({
         minute: currentMatch.value.minute,
         type: 'quarter',
@@ -319,27 +426,70 @@ const simulateMatch = () => {
       })
     }
 
-    // Random events during match
-    const eventChance = Math.random()
+    // Get tactical match state
+    const matchState = simulateMatchTick()
 
-    // Scoring chance (AFL is higher scoring - approximately every 3-4 minutes)
-    if (eventChance > 0.95) {
-      const isHomeScore = Math.random() > 0.5
-      const scoringTeam = isHomeScore ? currentMatch.value.homeTeam : currentMatch.value.awayTeam
-      const isGoal = Math.random() > 0.25 // 75% goals, 25% behinds
+    // Track possession
+    if (matchState.wePossess) {
+      if (currentMatch.value.isHome) {
+        currentMatch.value.possession.home++
+      } else {
+        currentMatch.value.possession.away++
+      }
+    } else {
+      if (currentMatch.value.isHome) {
+        currentMatch.value.possession.away++
+      } else {
+        currentMatch.value.possession.home++
+      }
+    }
 
-      if (scoringTeam === teamName.value) {
-        // Our team scores
-        const scorers = squad.value.filter(p => ['FF', 'CHF', 'HFF', 'RV', 'RR'].includes(p.position))
-        const scorer = scorers[Math.floor(Math.random() * scorers.length)]
+    // Scoring attempt based on tactical engine
+    if (Math.random() < matchState.scoringChance) {
+      const isOurTeam = matchState.wePossess
+      const scoringTeam = isOurTeam ? teamName.value : currentMatch.value.opponent
+      const isHomeScore = (isOurTeam && currentMatch.value.isHome) || (!isOurTeam && !currentMatch.value.isHome)
+
+      // Goal vs behind based on player skill and pressure
+      const kickingQuality = isOurTeam ?
+        squad.value.reduce((sum, p) => sum + p.attributes.kicking, 0) / squad.value.length :
+        65 // opponent average
+
+      const goalChance = (kickingQuality / 100) * 0.75 // 70-75% for goals normally
+      const isGoal = Math.random() < goalChance
+
+      if (isOurTeam) {
+        // Our team scores - select realistic scorer based on position and form
+        const scorers = squad.value.filter(p =>
+          ['FF', 'CHF', 'HFF', 'RV', 'RR'].includes(p.position) &&
+          !p.injured && !p.suspended
+        )
+
+        // Weight by form
+        const weights = scorers.map(p => p.form)
+        const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+        let random = Math.random() * totalWeight
+        let scorer = scorers[0]
+
+        for (let i = 0; i < scorers.length; i++) {
+          random -= weights[i]
+          if (random <= 0) {
+            scorer = scorers[i]
+            break
+          }
+        }
 
         if (isGoal) {
-          if (isHomeScore) {
-            currentMatch.value.homeGoals++
-          } else {
-            currentMatch.value.awayGoals++
-          }
+          if (isHomeScore) currentMatch.value.homeGoals++
+          else currentMatch.value.awayGoals++
           scorer.goals++
+
+          // Update form and morale after goal
+          scorer.form = Math.min(10, scorer.form + 0.1)
+          scorer.morale = Math.min(100, scorer.morale + 3)
+
+          // Update momentum
+          currentMatch.value.momentum += isHomeScore ? 10 : -10
 
           currentMatch.value.events.unshift({
             minute: currentMatch.value.minute,
@@ -347,14 +497,11 @@ const simulateMatch = () => {
             type: 'goal',
             team: scoringTeam,
             player: scorer.name,
-            message: `🏉 GOAL! ${scorer.name} kicks a major!`
+            message: `🏉 GOAL! ${scorer.name} kicks a beauty! (Form: ${scorer.form.toFixed(1)})`
           })
         } else {
-          if (isHomeScore) {
-            currentMatch.value.homeBehinds++
-          } else {
-            currentMatch.value.awayBehinds++
-          }
+          if (isHomeScore) currentMatch.value.homeBehinds++
+          else currentMatch.value.awayBehinds++
           scorer.behinds++
 
           currentMatch.value.events.unshift({
@@ -369,11 +516,11 @@ const simulateMatch = () => {
       } else {
         // Opponent scores
         if (isGoal) {
-          if (isHomeScore) {
-            currentMatch.value.homeGoals++
-          } else {
-            currentMatch.value.awayGoals++
-          }
+          if (isHomeScore) currentMatch.value.homeGoals++
+          else currentMatch.value.awayGoals++
+
+          // Update momentum
+          currentMatch.value.momentum += isHomeScore ? 10 : -10
 
           currentMatch.value.events.unshift({
             minute: currentMatch.value.minute,
@@ -383,11 +530,8 @@ const simulateMatch = () => {
             message: `🏉 Goal to ${scoringTeam}`
           })
         } else {
-          if (isHomeScore) {
-            currentMatch.value.homeBehinds++
-          } else {
-            currentMatch.value.awayBehinds++
-          }
+          if (isHomeScore) currentMatch.value.homeBehinds++
+          else currentMatch.value.awayBehinds++
 
           currentMatch.value.events.unshift({
             minute: currentMatch.value.minute,
@@ -400,17 +544,63 @@ const simulateMatch = () => {
       }
     }
 
-    // Injury chance (rare)
-    if (eventChance > 0.998) {
-      const randomPlayer = squad.value[Math.floor(Math.random() * squad.value.length)]
-      randomPlayer.injured = true
-      currentMatch.value.events.unshift({
-        minute: currentMatch.value.minute,
-        quarter: currentMatch.value.quarter,
-        type: 'injury',
-        player: randomPlayer.name,
-        message: `🚑 ${randomPlayer.name} is injured!`
-      })
+    // Match injury chance (very rare, based on fitness)
+    if (Math.random() > 0.999) {
+      const healthyPlayers = squad.value.filter(p => !p.injured && p.fitness < 100)
+      if (healthyPlayers.length > 0) {
+        const player = healthyPlayers[Math.floor(Math.random() * healthyPlayers.length)]
+        player.injured = true
+        player.injuryDaysRemaining = Math.floor(Math.random() * 7) + 3 // 3-10 days
+
+        currentMatch.value.events.unshift({
+          minute: currentMatch.value.minute,
+          quarter: currentMatch.value.quarter,
+          type: 'injury',
+          player: player.name,
+          message: `🚑 ${player.name} is injured!`
+        })
+      }
+    }
+
+    // Discipline - cards based on pressing intensity
+    const cardChance = tactics.value.pressing === 'High' ? 0.0015 : 0.0008
+    if (Math.random() < cardChance) {
+      const player = squad.value[Math.floor(Math.random() * squad.value.length)]
+      if (!player.injured && !player.suspended) {
+        const isRed = Math.random() < 0.15 // 15% chance of red card
+
+        if (isRed) {
+          player.redCards++
+          player.suspended = true
+          player.suspensionDaysRemaining = 21 // 3 weeks
+          player.morale = Math.max(30, player.morale - 20)
+
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'red-card',
+            player: player.name,
+            message: `🟥 RED CARD! ${player.name} sent off!`
+          })
+        } else {
+          player.yellowCards++
+          player.morale = Math.max(40, player.morale - 5)
+
+          // 2 yellows = suspension
+          if (player.yellowCards >= 2) {
+            player.suspended = true
+            player.suspensionDaysRemaining = 7
+          }
+
+          currentMatch.value.events.unshift({
+            minute: currentMatch.value.minute,
+            quarter: currentMatch.value.quarter,
+            type: 'yellow-card',
+            player: player.name,
+            message: `🟨 Yellow card for ${player.name}`
+          })
+        }
+      }
     }
   }, simulationSpeed.value)
 }
@@ -1126,6 +1316,11 @@ const getOrdinalSuffix = (num) => {
 
     <nav class="tabs">
       <button
+        @click="activeTab = 'dashboard'"
+        :class="{ active: activeTab === 'dashboard' }">
+        Dashboard
+      </button>
+      <button
         @click="activeTab = 'squad'"
         :class="{ active: activeTab === 'squad' }">
         Squad
@@ -1182,6 +1377,115 @@ const getOrdinalSuffix = (num) => {
         Board
       </button>
     </nav>
+
+    <!-- Dashboard Tab -->
+    <div v-if="activeTab === 'dashboard'" class="tab-content">
+      <div class="dashboard-grid">
+        <!-- Quick Stats -->
+        <div class="dashboard-card quick-stats">
+          <h3>📊 Season Overview</h3>
+          <div class="stat-grid">
+            <div class="stat-item">
+              <div class="stat-value">{{ sortedStandings.findIndex(t => t.team === teamName) + 1 }}{{ getOrdinalSuffix(sortedStandings.findIndex(t => t.team === teamName) + 1) }}</div>
+              <div class="stat-label">League Position</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ boardExpectations.jobSecurity }}%</div>
+              <div class="stat-label">Job Security</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ teamOverall }}</div>
+              <div class="stat-label">Team Rating</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">Day {{ calendar.currentDay }}</div>
+              <div class="stat-label">Season Progress</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next Match -->
+        <div class="dashboard-card next-match-preview" v-if="nextMatch">
+          <h3>🏉 Next Match</h3>
+          <div class="match-teams">
+            <span class="team">{{ nextMatch.homeTeam }}</span>
+            <span class="vs">vs</span>
+            <span class="team">{{ nextMatch.awayTeam }}</span>
+          </div>
+          <p class="match-info">Day {{ nextMatch.day }} • Round {{ nextMatch.round }}</p>
+          <p class="days-away">{{ nextMatch.day - calendar.currentDay }} days away</p>
+          <button @click="activeTab = 'calendar'" class="quick-action-btn">View Calendar</button>
+        </div>
+
+        <!-- Key Players -->
+        <div class="dashboard-card key-players">
+          <h3>⭐ Key Players</h3>
+          <div class="player-list">
+            <div v-for="player in squad.slice().sort((a, b) => b.form - a.form).slice(0, 3)" :key="player.id" class="key-player">
+              <span class="player-name">{{ player.name }}</span>
+              <span class="player-pos">{{ player.position }}</span>
+              <span class="player-form" :class="{
+                excellent: player.form >= 8,
+                good: player.form >= 7 && player.form < 8,
+                average: player.form < 7
+              }">{{ player.form.toFixed(1) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Form -->
+        <div class="dashboard-card recent-form">
+          <h3>📈 Recent Results</h3>
+          <div v-if="fixtures.filter(f => f.played).length === 0" class="empty">
+            No matches played yet
+          </div>
+          <div v-else class="form-guide">
+            <div v-for="fixture in fixtures.filter(f => f.played).slice(-5).reverse()" :key="fixture.id" class="form-result">
+              <span class="opponent">{{ fixture.homeTeam === teamName ? fixture.awayTeam : fixture.homeTeam }}</span>
+              <span class="result-badge" :class="{
+                win: (fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) ||
+                     (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore),
+                loss: (fixture.homeTeam === teamName && fixture.homeScore < fixture.awayScore) ||
+                      (fixture.awayTeam === teamName && fixture.awayScore < fixture.homeScore),
+                draw: fixture.homeScore === fixture.awayScore
+              }">
+                {{ (fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) ||
+                   (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore) ? 'W' :
+                   fixture.homeScore === fixture.awayScore ? 'D' : 'L' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Squad Status -->
+        <div class="dashboard-card squad-status">
+          <h3>👥 Squad Status</h3>
+          <div class="status-grid">
+            <div class="status-item">
+              <span class="status-number">{{ squad.filter(p => !p.injured && !p.suspended).length }}</span>
+              <span class="status-label">Available</span>
+            </div>
+            <div class="status-item injured">
+              <span class="status-number">{{ squad.filter(p => p.injured).length }}</span>
+              <span class="status-label">Injured</span>
+            </div>
+            <div class="status-item suspended">
+              <span class="status-number">{{ squad.filter(p => p.suspended).length }}</span>
+              <span class="status-label">Suspended</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="dashboard-card quick-actions">
+          <h3>⚡ Quick Actions</h3>
+          <button @click="simulateDay" class="action-btn-dash">Simulate Day</button>
+          <button @click="simulateWeek" class="action-btn-dash">Simulate Week</button>
+          <button @click="activeTab = 'tactics'" class="action-btn-dash">Adjust Tactics</button>
+          <button @click="activeTab = 'squad'" class="action-btn-dash">View Squad</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Squad Tab -->
     <div v-if="activeTab === 'squad'" class="tab-content">
@@ -1307,6 +1611,45 @@ const getOrdinalSuffix = (num) => {
             <div class="score-display">
               <span class="score-line">{{ currentMatch.awayGoals }}.{{ currentMatch.awayBehinds }}</span>
               <span class="total-score">({{ currentMatch.awayGoals * 6 + currentMatch.awayBehinds }})</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match Statistics -->
+        <div class="match-statistics">
+          <h3>Match Statistics</h3>
+          <div class="stats-container">
+            <div class="stat-row">
+              <span class="stat-team">{{ currentMatch.homeTeam }}</span>
+              <div class="stat-bar-container">
+                <div class="stat-bar-label">Possession</div>
+                <div class="stat-bar">
+                  <div class="stat-bar-fill home" :style="{
+                    width: ((currentMatch.possession.home / (currentMatch.possession.home + currentMatch.possession.away)) * 100) + '%'
+                  }"></div>
+                  <div class="stat-bar-fill away" :style="{
+                    width: ((currentMatch.possession.away / (currentMatch.possession.home + currentMatch.possession.away)) * 100) + '%'
+                  }"></div>
+                </div>
+                <div class="stat-bar-values">
+                  <span>{{ Math.round((currentMatch.possession.home / (currentMatch.possession.home + currentMatch.possession.away)) * 100) }}%</span>
+                  <span>{{ Math.round((currentMatch.possession.away / (currentMatch.possession.home + currentMatch.possession.away)) * 100) }}%</span>
+                </div>
+              </div>
+              <span class="stat-team">{{ currentMatch.awayTeam }}</span>
+            </div>
+
+            <div class="stat-row">
+              <span class="stat-team">{{ currentMatch.homeTeam }}</span>
+              <div class="stat-bar-container">
+                <div class="stat-bar-label">Momentum</div>
+                <div class="momentum-meter">
+                  <div class="momentum-indicator" :style="{
+                    left: ((currentMatch.momentum + 100) / 2) + '%'
+                  }"></div>
+                </div>
+              </div>
+              <span class="stat-team">{{ currentMatch.awayTeam }}</span>
             </div>
           </div>
         </div>
@@ -3973,5 +4316,378 @@ h3.negative {
   margin: 0;
   line-height: 1.6;
   font-size: 0.95rem;
+}
+
+/* Dashboard Styles */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.dashboard-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.dashboard-card h3 {
+  margin: 0 0 1.25rem 0;
+  color: #1e3c72;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.match-teams {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1rem 0;
+}
+
+.match-teams .team {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1e3c72;
+}
+
+.match-teams .vs {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.match-info {
+  text-align: center;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.days-away {
+  text-align: center;
+  color: #4caf50;
+  font-weight: 600;
+  margin: 0.5rem 0 1rem 0;
+}
+
+.quick-action-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.key-player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 2px solid #e0e0e0;
+}
+
+.player-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.player-pos {
+  background: #1e3c72;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0 0.75rem;
+}
+
+.player-form {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.player-form.excellent {
+  color: #4caf50;
+}
+
+.player-form.good {
+  color: #ff9800;
+}
+
+.player-form.average {
+  color: #ff6b6b;
+}
+
+.form-guide {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.form-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.opponent {
+  font-size: 0.8rem;
+  color: #666;
+  text-align: center;
+}
+
+.result-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+}
+
+.result-badge.win {
+  background: #4caf50;
+}
+
+.result-badge.draw {
+  background: #ff9800;
+}
+
+.result-badge.loss {
+  background: #ff6b6b;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #e8f5e9;
+  border-radius: 8px;
+}
+
+.status-item.injured {
+  background: #ffebee;
+}
+
+.status-item.suspended {
+  background: #fff8e1;
+}
+
+.status-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #4caf50;
+}
+
+.status-item.injured .status-number {
+  color: #ff6b6b;
+}
+
+.status-item.suspended .status-number {
+  color: #ff9800;
+}
+
+.status-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-actions h3 {
+  margin-bottom: 1rem;
+}
+
+.action-btn-dash {
+  padding: 0.875rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s;
+  color: #1e3c72;
+}
+
+.action-btn-dash:hover {
+  background: #1e3c72;
+  color: white;
+  border-color: #1e3c72;
+  transform: translateX(4px);
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+  font-style: italic;
+}
+
+/* Match Statistics */
+.match-statistics {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.match-statistics h3 {
+  margin: 0 0 1.25rem 0;
+  color: #333;
+}
+
+.stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 150px;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-team {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.stat-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-bar-label {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.stat-bar {
+  height: 30px;
+  background: #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  display: flex;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.stat-bar-fill.home {
+  background: linear-gradient(90deg, #1e3c72, #2a5298);
+}
+
+.stat-bar-fill.away {
+  background: linear-gradient(90deg, #ff9800, #ff6b6b);
+}
+
+.stat-bar-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.momentum-meter {
+  height: 30px;
+  background: linear-gradient(90deg,
+    #ff6b6b 0%,
+    #e0e0e0 50%,
+    #4caf50 100%);
+  border-radius: 15px;
+  position: relative;
+}
+
+.momentum-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 40px;
+  background: #333;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: left 0.5s ease;
 }
 </style>
