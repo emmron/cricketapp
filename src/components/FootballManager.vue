@@ -99,6 +99,115 @@ const inbox = ref([
 
 const nextInboxId = ref(2)
 
+// Calendar and Fixture System
+const calendar = ref({
+  currentDay: 1,
+  currentRound: 1,
+  totalRounds: 14, // Each team plays each other twice (home and away)
+  daysPerRound: 7,
+  season: 2025
+})
+
+const fixtures = ref([])
+const fixturesGenerated = ref(false)
+
+// Training system
+const training = ref({
+  intensity: 'medium', // low, medium, high
+  focus: 'balanced', // balanced, attack, defense, fitness
+  lastTrainingDay: 0
+})
+
+// Chat system
+const chatPerson = ref(null) // Currently selected person to chat with
+const chatHistory = ref({}) // { personId: [{ from: 'user'|'person', message: '', timestamp: '' }] }
+const chatInput = ref('')
+
+// Chat response templates
+const chatResponses = {
+  greeting: [
+    "G'day coach! How can I help you?",
+    "Hey boss, what's on your mind?",
+    "Good to see you coach!",
+    "Always happy to chat, coach."
+  ],
+  performance: [
+    "I'm feeling good about my form lately!",
+    "I think I can do better. I'm working hard in training.",
+    "Thanks coach, I'll keep giving my all for the team.",
+    "The boys and I are really clicking at the moment."
+  ],
+  morale: [
+    "I'm loving it here, coach!",
+    "Morale in the group is really high right now.",
+    "We're all behind you, coach.",
+    "The team spirit is fantastic!"
+  ],
+  transfer: [
+    "I'm committed to this club, coach.",
+    "This is where I want to be.",
+    "Not interested in leaving, this is my team.",
+    "I'm here for the long haul, coach."
+  ],
+  injury: [
+    "I'm working with the physio to get back ASAP.",
+    "Frustrating to be out, but I'll be back stronger.",
+    "The recovery is going well, coach.",
+    "Can't wait to get back out there!"
+  ],
+  tactics: [
+    "I'm ready to play wherever you need me, coach.",
+    "I think we're set up well tactically.",
+    "The game plan is clear to all of us.",
+    "Love the way we're playing at the moment."
+  ],
+  staff: [
+    "The team is working really well together.",
+    "I'm here to help the club succeed in any way I can.",
+    "Communication with the players is excellent.",
+    "Happy to be part of this coaching setup."
+  ]
+}
+
+// News story templates for enhanced inbox
+const newsTemplates = [
+  { type: 'league', templates: [
+    'The AFL season is heating up as teams battle for finals positions.',
+    'Brownlow Medal race intensifies with several players in contention.',
+    'Record crowds expected for this weekend\'s blockbuster matches.',
+    'AFL Commission announces new rule changes for next season.',
+    'Rising star nominations announced - several young guns impress.'
+  ]},
+  { type: 'rivalry', templates: [
+    'Local derby coming up - fans excited for the clash!',
+    'Historic rivalry renewed as two powerhouses prepare to meet.',
+    'Trash talk heating up between rival coaches ahead of match.'
+  ]},
+  { type: 'sponsor', templates: [
+    'Major sponsor interested in partnering with the club.',
+    'Sponsorship revenue up 15% this quarter.',
+    'New merchandise deal could boost club finances.'
+  ]},
+  { type: 'fan', templates: [
+    'Fans celebrate team\'s recent form with street parade.',
+    'Social media buzzing after latest victory.',
+    'Fan engagement at all-time high this season.',
+    'Supporters group raises funds for club facilities.'
+  ]},
+  { type: 'board', templates: [
+    'Board pleased with direction of the club.',
+    'Club president praises coaching staff and players.',
+    'Long-term strategic plan unveiled by board.',
+    'Board discusses facility upgrades for training ground.'
+  ]},
+  { type: 'rumor', templates: [
+    'Transfer speculation: rival club eyeing one of our stars.',
+    'Rumors of player discontent dismissed by management.',
+    'Media reports link club with high-profile recruit.',
+    'Opposition clubs reportedly interested in our young talent.'
+  ]}
+]
+
 // Computed properties
 const sortedStandings = computed(() => {
   return [...standings.value].sort((a, b) => {
@@ -482,6 +591,307 @@ const processWeeklyFinances = () => {
     message: `Income: $${finances.value.weeklyIncome.toLocaleString()}\nWages: $${totalWeeklyWages.value.toLocaleString()}\nNet: $${weeklyBalance.value.toLocaleString()}\n\nCurrent Balance: $${budget.value.toLocaleString()}`,
     type: 'finance'
   })
+
+  // Generate random news/events
+  generateRandomNews()
+}
+
+// Chat functions
+const selectChatPerson = (person, type) => {
+  chatPerson.value = { ...person, type }
+  const personKey = `${type}-${person.id}`
+
+  // Initialize chat history if doesn't exist
+  if (!chatHistory.value[personKey]) {
+    chatHistory.value[personKey] = [{
+      from: 'person',
+      message: type === 'player'
+        ? chatResponses.greeting[Math.floor(Math.random() * chatResponses.greeting.length)]
+        : chatResponses.staff[Math.floor(Math.random() * chatResponses.staff.length)],
+      timestamp: new Date().toLocaleTimeString()
+    }]
+  }
+}
+
+const sendChatMessage = () => {
+  if (!chatInput.value.trim() || !chatPerson.value) return
+
+  const personKey = `${chatPerson.value.type}-${chatPerson.value.id}`
+  const message = chatInput.value.trim()
+
+  // Add user message
+  chatHistory.value[personKey].push({
+    from: 'user',
+    message: message,
+    timestamp: new Date().toLocaleTimeString()
+  })
+
+  // Generate response based on message content
+  setTimeout(() => {
+    const response = generateChatResponse(message, chatPerson.value)
+    chatHistory.value[personKey].push({
+      from: 'person',
+      message: response,
+      timestamp: new Date().toLocaleTimeString()
+    })
+  }, 500 + Math.random() * 1000) // Simulate typing delay
+
+  chatInput.value = ''
+}
+
+const generateChatResponse = (userMessage, person) => {
+  const msg = userMessage.toLowerCase()
+
+  // Check message content and return appropriate response
+  if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
+    return chatResponses.greeting[Math.floor(Math.random() * chatResponses.greeting.length)]
+  } else if (msg.includes('perform') || msg.includes('form') || msg.includes('play')) {
+    return chatResponses.performance[Math.floor(Math.random() * chatResponses.performance.length)]
+  } else if (msg.includes('morale') || msg.includes('feel') || msg.includes('happy')) {
+    return chatResponses.morale[Math.floor(Math.random() * chatResponses.morale.length)]
+  } else if (msg.includes('transfer') || msg.includes('leave') || msg.includes('stay')) {
+    return chatResponses.transfer[Math.floor(Math.random() * chatResponses.transfer.length)]
+  } else if (msg.includes('injury') || msg.includes('injured') || msg.includes('hurt')) {
+    if (person.type === 'player' && person.injured) {
+      return chatResponses.injury[Math.floor(Math.random() * chatResponses.injury.length)]
+    }
+    return "Thankfully I'm feeling fit and healthy, coach!"
+  } else if (msg.includes('tactic') || msg.includes('strategy') || msg.includes('game plan')) {
+    return chatResponses.tactics[Math.floor(Math.random() * chatResponses.tactics.length)]
+  } else if (person.type === 'staff') {
+    return chatResponses.staff[Math.floor(Math.random() * chatResponses.staff.length)]
+  }
+
+  // Default responses
+  const defaultResponses = [
+    "Absolutely, coach!",
+    "I'll do my best for the team.",
+    "Thanks for the chat, coach.",
+    "Good point, I'll keep that in mind.",
+    "That's what I'm here for!",
+    "Let's get after it, coach!",
+    "The team comes first, always.",
+    "I appreciate you checking in, coach."
+  ]
+
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
+}
+
+// Enhanced news generation
+const generateRandomNews = () => {
+  // 30% chance to generate a news story each week
+  if (Math.random() < 0.3) {
+    const category = newsTemplates[Math.floor(Math.random() * newsTemplates.length)]
+    const template = category.templates[Math.floor(Math.random() * category.templates.length)]
+
+    const subjects = {
+      league: 'AFL News',
+      rivalry: 'Match Preview',
+      sponsor: 'Commercial Department',
+      fan: 'Fan Relations',
+      board: 'Board of Directors',
+      rumor: 'Transfer Rumors'
+    }
+
+    addInboxMessage({
+      from: subjects[category.type] || 'AFL Media',
+      subject: template.substring(0, 50) + (template.length > 50 ? '...' : ''),
+      message: template,
+      type: 'news'
+    })
+  }
+
+  // Random player/staff messages
+  if (Math.random() < 0.2) {
+    const randomPlayer = squad.value[Math.floor(Math.random() * squad.value.length)]
+    const messages = [
+      `Coach, just wanted to let you know I'm feeling really good in training!`,
+      `Thanks for the faith you've shown in me. I won't let you down!`,
+      `The boys and I are ready to give everything for the club.`,
+      `Training has been intense but we're all benefiting from it.`
+    ]
+
+    addInboxMessage({
+      from: randomPlayer.name,
+      subject: 'Quick Message',
+      message: messages[Math.floor(Math.random() * messages.length)],
+      type: 'news'
+    })
+  }
+}
+
+// Calendar and Fixture functions
+const generateFixtures = () => {
+  if (fixturesGenerated.value) return
+
+  const opponents = availableOpponents.value
+  const allFixtures = []
+  let matchId = 1
+
+  // Generate round-robin fixtures (each team plays each other twice - home and away)
+  for (let round = 1; round <= calendar.value.totalRounds; round++) {
+    // Alternate home/away each round
+    const isHome = round % 2 === 1
+    const opponentIndex = (round - 1) % opponents.length
+    const opponent = opponents[opponentIndex]
+
+    // Matches on Day 7 of each round (weekend)
+    const matchDay = (round - 1) * calendar.value.daysPerRound + 7
+
+    allFixtures.push({
+      id: matchId++,
+      round: round,
+      day: matchDay,
+      homeTeam: isHome ? teamName.value : opponent,
+      awayTeam: isHome ? opponent : teamName.value,
+      played: false,
+      homeScore: 0,
+      awayScore: 0
+    })
+  }
+
+  fixtures.value = allFixtures
+  fixturesGenerated.value = true
+}
+
+const upcomingFixtures = computed(() => {
+  return fixtures.value
+    .filter(f => !f.played && f.day >= calendar.value.currentDay)
+    .sort((a, b) => a.day - b.day)
+    .slice(0, 5)
+})
+
+const nextMatch = computed(() => {
+  return upcomingFixtures.value[0] || null
+})
+
+const simulateDay = () => {
+  calendar.value.currentDay++
+
+  // Check if there's a match today
+  const todayMatch = fixtures.value.find(f => f.day === calendar.value.currentDay && !f.played)
+
+  if (todayMatch) {
+    // Auto-play the match
+    const isHome = todayMatch.homeTeam === teamName.value
+    currentMatch.value.isHome = isHome
+    startMatch(isHome ? todayMatch.awayTeam : todayMatch.homeTeam)
+    todayMatch.played = true
+
+    addInboxMessage({
+      from: 'Match Day',
+      subject: `Match Day: ${todayMatch.homeTeam} vs ${todayMatch.awayTeam}`,
+      message: `Today's match is being played. Check the Match tab for live updates!`,
+      type: 'match'
+    })
+  }
+
+  // Training improvements (every 3 days)
+  if (calendar.value.currentDay % 3 === 0) {
+    applyTraining()
+  }
+
+  // Random events (5% chance per day)
+  if (Math.random() < 0.05) {
+    generateRandomEvent()
+  }
+
+  // Update current round
+  calendar.value.currentRound = Math.ceil(calendar.value.currentDay / calendar.value.daysPerRound)
+
+  // Generate news occasionally
+  if (Math.random() < 0.1) {
+    generateRandomNews()
+  }
+}
+
+const simulateWeek = () => {
+  for (let i = 0; i < 7; i++) {
+    simulateDay()
+  }
+  processWeeklyFinances()
+
+  addInboxMessage({
+    from: 'Weekly Summary',
+    subject: `Week ${Math.ceil(calendar.value.currentDay / 7)} Complete`,
+    message: `Another week in the books! Current day: ${calendar.value.currentDay}, Round: ${calendar.value.currentRound}`,
+    type: 'news'
+  })
+}
+
+const applyTraining = () => {
+  const intensityBonus = {
+    low: 0.1,
+    medium: 0.2,
+    high: 0.3
+  }
+
+  const bonus = intensityBonus[training.value.intensity]
+
+  squad.value.forEach(player => {
+    if (!player.injured && Math.random() < bonus) {
+      // Small chance to improve overall rating
+      if (player.overall < 95) {
+        player.overall += 1
+      }
+    }
+
+    // Heal injuries over time
+    if (player.injured && Math.random() < 0.15) {
+      player.injured = false
+      addInboxMessage({
+        from: 'Medical Team',
+        subject: `${player.name} Returns from Injury`,
+        message: `Good news! ${player.name} has recovered from injury and is available for selection.`,
+        type: 'news'
+      })
+    }
+  })
+}
+
+const generateRandomEvent = () => {
+  const events = [
+    () => {
+      // Random player form boost
+      const player = squad.value[Math.floor(Math.random() * squad.value.length)]
+      addInboxMessage({
+        from: 'Performance Analysis',
+        subject: `${player.name} Showing Great Form`,
+        message: `${player.name} has been impressive in training this week! The coaching staff are very pleased.`,
+        type: 'news'
+      })
+    },
+    () => {
+      // Minor injury (10% chance)
+      if (Math.random() < 0.1) {
+        const healthyPlayers = squad.value.filter(p => !p.injured)
+        if (healthyPlayers.length > 0) {
+          const player = healthyPlayers[Math.floor(Math.random() * healthyPlayers.length)]
+          player.injured = true
+          addInboxMessage({
+            from: 'Medical Team',
+            subject: `Injury Update: ${player.name}`,
+            message: `Unfortunately, ${player.name} picked up an injury in training. Expected to be out for 1-2 weeks.`,
+            type: 'news'
+          })
+        }
+      }
+    },
+    () => {
+      // Budget bonus
+      const bonus = Math.floor(Math.random() * 500000) + 100000
+      budget.value += bonus
+      addInboxMessage({
+        from: 'Commercial Department',
+        subject: 'Unexpected Revenue',
+        message: `Great news! A new sponsorship deal has brought in $${bonus.toLocaleString()} for the club.`,
+        type: 'finance'
+      })
+    }
+  ]
+
+  const event = events[Math.floor(Math.random() * events.length)]
+  event()
 }
 </script>
 
@@ -532,6 +942,16 @@ const processWeeklyFinances = () => {
         @click="activeTab = 'finances'"
         :class="{ active: activeTab === 'finances' }">
         Finances
+      </button>
+      <button
+        @click="activeTab = 'chat'"
+        :class="{ active: activeTab === 'chat' }">
+        Chat
+      </button>
+      <button
+        @click="activeTab = 'calendar'"
+        :class="{ active: activeTab === 'calendar' }">
+        Calendar
       </button>
     </nav>
 
@@ -835,6 +1255,206 @@ const processWeeklyFinances = () => {
           <div class="finance-row total">
             <span class="finance-label">Total Expenses (Season)</span>
             <span class="finance-value negative">-${{ finances.totalExpenses.toLocaleString() }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Tab -->
+    <div v-if="activeTab === 'chat'" class="tab-content">
+      <div class="chat-container">
+        <!-- Contact List -->
+        <div class="chat-sidebar">
+          <h3>Players</h3>
+          <div class="contact-list">
+            <div
+              v-for="player in squad"
+              :key="`player-${player.id}`"
+              class="contact-item"
+              :class="{ active: chatPerson?.type === 'player' && chatPerson?.id === player.id }"
+              @click="selectChatPerson(player, 'player')">
+              <div class="contact-info">
+                <span class="contact-name">{{ player.name }}</span>
+                <span class="contact-role">{{ player.position }}</span>
+              </div>
+              <span class="contact-status" :class="{ injured: player.injured }">
+                {{ player.injured ? '🚑' : '✓' }}
+              </span>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.5rem;">Staff</h3>
+          <div class="contact-list">
+            <div
+              v-for="member in staff"
+              :key="`staff-${member.id}`"
+              class="contact-item"
+              :class="{ active: chatPerson?.type === 'staff' && chatPerson?.id === member.id }"
+              @click="selectChatPerson(member, 'staff')">
+              <div class="contact-info">
+                <span class="contact-name">{{ member.name }}</span>
+                <span class="contact-role">{{ member.role }}</span>
+              </div>
+              <span class="contact-status">👤</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Window -->
+        <div class="chat-window">
+          <div v-if="!chatPerson" class="chat-empty">
+            <h2>💬 Team Chat</h2>
+            <p>Select a player or staff member to start chatting</p>
+          </div>
+
+          <div v-else class="chat-active">
+            <div class="chat-header">
+              <div>
+                <h3>{{ chatPerson.name }}</h3>
+                <span class="chat-subtitle">
+                  {{ chatPerson.type === 'player' ? chatPerson.position : chatPerson.role }}
+                </span>
+              </div>
+            </div>
+
+            <div class="chat-messages">
+              <div
+                v-for="(msg, index) in chatHistory[`${chatPerson.type}-${chatPerson.id}`] || []"
+                :key="index"
+                class="message"
+                :class="msg.from">
+                <div class="message-bubble">
+                  <p>{{ msg.message }}</p>
+                  <span class="message-time">{{ msg.timestamp }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-container">
+              <input
+                v-model="chatInput"
+                @keyup.enter="sendChatMessage"
+                type="text"
+                placeholder="Type a message..."
+                class="chat-input"
+              />
+              <button @click="sendChatMessage" class="send-btn">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div v-if="activeTab === 'calendar'" class="tab-content">
+      <div class="calendar-header">
+        <div class="calendar-info">
+          <h2>Season {{ calendar.season }}</h2>
+          <div class="calendar-stats">
+            <span class="calendar-stat">Day {{ calendar.currentDay }}</span>
+            <span class="calendar-stat">Round {{ calendar.currentRound }}/{{ calendar.totalRounds }}</span>
+            <span class="calendar-stat">Week {{ Math.ceil(calendar.currentDay / 7) }}</span>
+          </div>
+        </div>
+        <div class="calendar-controls">
+          <button @click="generateFixtures" v-if="!fixturesGenerated" class="action-btn">
+            Generate Fixtures
+          </button>
+          <button @click="simulateDay" class="action-btn">Simulate Day</button>
+          <button @click="simulateWeek" class="action-btn">Simulate Week</button>
+        </div>
+      </div>
+
+      <!-- Next Match Preview -->
+      <div v-if="nextMatch" class="next-match-card">
+        <h3>🏉 Next Match - Day {{ nextMatch.day }} (Round {{ nextMatch.round }})</h3>
+        <div class="match-preview">
+          <div class="team-preview">
+            <h4>{{ nextMatch.homeTeam }}</h4>
+            <span class="home-label">HOME</span>
+          </div>
+          <div class="vs">VS</div>
+          <div class="team-preview">
+            <h4>{{ nextMatch.awayTeam }}</h4>
+            <span class="away-label">AWAY</span>
+          </div>
+        </div>
+        <p class="days-until">{{ nextMatch.day - calendar.currentDay }} days until match</p>
+      </div>
+
+      <!-- Training Settings -->
+      <div class="training-settings">
+        <h3>⚡ Training Settings</h3>
+        <div class="training-controls">
+          <div class="training-option">
+            <label>Intensity:</label>
+            <select v-model="training.intensity" class="training-select">
+              <option value="low">Low (Less fatigue, slower improvement)</option>
+              <option value="medium">Medium (Balanced)</option>
+              <option value="high">High (Faster improvement, more fatigue)</option>
+            </select>
+          </div>
+          <div class="training-option">
+            <label>Focus:</label>
+            <select v-model="training.focus" class="training-select">
+              <option value="balanced">Balanced</option>
+              <option value="attack">Attack</option>
+              <option value="defense">Defense</option>
+              <option value="fitness">Fitness</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fixture List -->
+      <div class="fixtures-section">
+        <h3>Upcoming Fixtures</h3>
+        <div v-if="!fixturesGenerated" class="empty-state">
+          Click "Generate Fixtures" to create the season schedule
+        </div>
+        <div v-else class="fixtures-list">
+          <div
+            v-for="fixture in upcomingFixtures"
+            :key="fixture.id"
+            class="fixture-card">
+            <div class="fixture-round">Round {{ fixture.round }}</div>
+            <div class="fixture-details">
+              <div class="fixture-teams">
+                <span :class="{ 'our-team': fixture.homeTeam === teamName }">
+                  {{ fixture.homeTeam }}
+                </span>
+                <span class="fixture-vs">vs</span>
+                <span :class="{ 'our-team': fixture.awayTeam === teamName }">
+                  {{ fixture.awayTeam }}
+                </span>
+              </div>
+              <div class="fixture-day">Day {{ fixture.day }}</div>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 2rem;">Recent Results</h3>
+        <div class="fixtures-list">
+          <div v-if="fixtures.filter(f => f.played).length === 0" class="empty-state">
+            No matches played yet
+          </div>
+          <div
+            v-for="fixture in fixtures.filter(f => f.played).slice(-5).reverse()"
+            :key="fixture.id"
+            class="fixture-card played">
+            <div class="fixture-round">Round {{ fixture.round }}</div>
+            <div class="fixture-details">
+              <div class="fixture-teams">
+                <span :class="{ 'our-team': fixture.homeTeam === teamName }">
+                  {{ fixture.homeTeam }}
+                </span>
+                <span class="fixture-score">{{ fixture.homeScore }} - {{ fixture.awayScore }}</span>
+                <span :class="{ 'our-team': fixture.awayTeam === teamName }">
+                  {{ fixture.awayTeam }}
+                </span>
+              </div>
+              <div class="fixture-day">Day {{ fixture.day }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -2039,5 +2659,492 @@ h3.negative {
   .message-card {
     padding: 0.875rem;
   }
+
+  /* Chat responsive */
+  .chat-container {
+    flex-direction: column;
+  }
+
+  .chat-sidebar {
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 2px solid #e0e0e0;
+  }
+
+  .chat-window {
+    width: 100%;
+  }
+
+  .contact-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .contact-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Chat Styles */
+.chat-container {
+  display: flex;
+  height: 600px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chat-sidebar {
+  width: 300px;
+  border-right: 2px solid #e0e0e0;
+  overflow-y: auto;
+  background: #f9f9f9;
+  padding: 1rem;
+}
+
+.chat-sidebar h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.contact-item:hover {
+  border-color: #1e3c72;
+  background: #f5f7fa;
+}
+
+.contact-item.active {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  border-color: #1e3c72;
+}
+
+.contact-item.active .contact-role {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.contact-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.contact-role {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.contact-status {
+  font-size: 1.2rem;
+}
+
+.contact-status.injured {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.chat-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #999;
+}
+
+.chat-empty h2 {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+}
+
+.chat-empty p {
+  margin: 0;
+  font-style: italic;
+}
+
+.chat-active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-header {
+  padding: 1.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+}
+
+.chat-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.2rem;
+}
+
+.chat-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #f5f7fa;
+}
+
+.message {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 70%;
+  padding: 0.875rem 1.25rem;
+  border-radius: 18px;
+  position: relative;
+}
+
+.message.person .message-bubble {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-bottom-left-radius: 4px;
+}
+
+.message.user .message-bubble {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message-bubble p {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.message-time {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-top: 2px solid #e0e0e0;
+  background: white;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 24px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.chat-input:focus {
+  border-color: #1e3c72;
+  background: #f9f9f9;
+}
+
+.send-btn {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+  min-height: 48px;
+}
+
+.send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 60, 114, 0.3);
+}
+
+.send-btn:active {
+  transform: translateY(0);
+}
+
+/* Calendar Styles */
+.calendar-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.calendar-info h2 {
+  margin: 0 0 1rem 0;
+  font-size: 2rem;
+}
+
+.calendar-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.calendar-stat {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.calendar-controls {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.next-match-card {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.next-match-card h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.3rem;
+}
+
+.match-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin: 1.5rem 0;
+}
+
+.team-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-preview h4 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.home-label,
+.away-label {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.vs {
+  font-size: 1.5rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.days-until {
+  margin: 1rem 0 0 0;
+  font-size: 1.1rem;
+  opacity: 0.95;
+}
+
+.training-settings {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.training-settings h3 {
+  margin: 0 0 1.25rem 0;
+  color: #333;
+}
+
+.training-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.training-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.training-option label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.training-select {
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.training-select:focus {
+  outline: none;
+  border-color: #1e3c72;
+}
+
+.fixtures-section {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.fixtures-section h3 {
+  margin: 0 0 1.25rem 0;
+  color: #333;
+}
+
+.fixtures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fixture-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #f9f9f9;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.fixture-card:hover {
+  border-color: #1e3c72;
+  background: #f5f7fa;
+}
+
+.fixture-card.played {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.fixture-round {
+  background: #1e3c72;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 80px;
+  text-align: center;
+}
+
+.fixture-details {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fixture-teams {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.fixture-vs {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.fixture-score {
+  background: #4caf50;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.fixture-day {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.fixture-teams .our-team {
+  color: #1e3c72;
+  font-weight: 700;
+}
 }
 </style>
