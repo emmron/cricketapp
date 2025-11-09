@@ -1080,6 +1080,81 @@ const fixturesByRound = computed(() => {
   return grouped
 })
 
+// Get round statistics
+const getRoundStats = (round) => {
+  const roundFixtures = fixturesByRound.value[round] || []
+  const yourMatches = roundFixtures.filter(f =>
+    f.played && (f.homeTeam === teamName.value || f.awayTeam === teamName.value)
+  )
+
+  if (yourMatches.length === 0) return null
+
+  let goalsFor = 0
+  let goalsAgainst = 0
+
+  yourMatches.forEach(m => {
+    if (m.homeTeam === teamName.value) {
+      goalsFor += m.homeScore
+      goalsAgainst += m.awayScore
+    } else {
+      goalsFor += m.awayScore
+      goalsAgainst += m.homeScore
+    }
+  })
+
+  return { goalsFor, goalsAgainst, played: yourMatches.length }
+}
+
+// Get team form (last 5 matches)
+const teamForm = computed(() => {
+  const playedMatches = fixtures.value
+    .filter(f => f.played && (f.homeTeam === teamName.value || f.awayTeam === teamName.value))
+    .slice(-5)
+
+  return playedMatches.map(m => {
+    const isHome = m.homeTeam === teamName.value
+    const ourScore = isHome ? m.homeScore : m.awayScore
+    const theirScore = isHome ? m.awayScore : m.homeScore
+
+    if (ourScore > theirScore) return 'W'
+    if (ourScore < theirScore) return 'L'
+    return 'D'
+  })
+})
+
+// Calendar statistics
+const calendarStats = computed(() => {
+  const yourMatches = fixtures.value.filter(f =>
+    f.played && (f.homeTeam === teamName.value || f.awayTeam === teamName.value)
+  )
+
+  let wins = 0, losses = 0, draws = 0
+  let goalsFor = 0, goalsAgainst = 0
+
+  yourMatches.forEach(m => {
+    const isHome = m.homeTeam === teamName.value
+    const ourScore = isHome ? m.homeScore : m.awayScore
+    const theirScore = isHome ? m.awayScore : m.homeScore
+
+    goalsFor += ourScore
+    goalsAgainst += theirScore
+
+    if (ourScore > theirScore) wins++
+    else if (ourScore < theirScore) losses++
+    else draws++
+  })
+
+  return {
+    played: yourMatches.length,
+    wins,
+    draws,
+    losses,
+    goalsFor,
+    goalsAgainst,
+    goalDiff: goalsFor - goalsAgainst
+  }
+})
+
 const simulateDay = () => {
   calendar.value.currentDay++
 
@@ -2238,6 +2313,71 @@ const getOrdinalSuffix = (num) => {
         </div>
       </div>
 
+      <!-- Stats Sidebar -->
+      <div v-if="fixturesGenerated" class="calendar-stats-bar">
+        <div class="stats-container">
+          <div class="stat-box">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-content">
+              <div class="stat-value">{{ calendarStats.wins }}</div>
+              <div class="stat-label">Wins</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">🤝</div>
+            <div class="stat-content">
+              <div class="stat-value">{{ calendarStats.draws }}</div>
+              <div class="stat-label">Draws</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">❌</div>
+            <div class="stat-content">
+              <div class="stat-value">{{ calendarStats.losses }}</div>
+              <div class="stat-label">Losses</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">⚽</div>
+            <div class="stat-content">
+              <div class="stat-value">{{ calendarStats.goalsFor }}</div>
+              <div class="stat-label">Scored</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">🥅</div>
+            <div class="stat-content">
+              <div class="stat-value">{{ calendarStats.goalsAgainst }}</div>
+              <div class="stat-label">Conceded</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-value" :class="{ 'positive': calendarStats.goalDiff > 0, 'negative': calendarStats.goalDiff < 0 }">
+                {{ calendarStats.goalDiff > 0 ? '+' : '' }}{{ calendarStats.goalDiff }}
+              </div>
+              <div class="stat-label">Goal Diff</div>
+            </div>
+          </div>
+          <div class="stat-box form-box">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+              <div class="form-indicators">
+                <span
+                  v-for="(result, index) in teamForm"
+                  :key="index"
+                  :class="['form-result', result.toLowerCase()]">
+                  {{ result }}
+                </span>
+                <span v-if="teamForm.length === 0" class="no-form">-</span>
+              </div>
+              <div class="stat-label">Form</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Calendar -->
       <div v-else class="calendar-body">
 
@@ -2384,70 +2524,226 @@ const getOrdinalSuffix = (num) => {
     </div>
 
     <!-- Tactics Tab -->
-    <div v-if="activeTab === 'tactics'" class="tab-content">
-      <div class="tactics-panel">
-        <h2>⚽ Team Tactics</h2>
-        <p class="tactics-subtitle">Configure your team's playing style and approach</p>
+    <div v-if="activeTab === 'tactics'" class="tab-content tactics-tab">
+      <!-- Tactics Header -->
+      <div class="tactics-header-bar">
+        <div class="tactics-title">
+          <h2>⚽ Team Tactics</h2>
+          <p>Configure your team's formation, playing style, and tactical approach</p>
+        </div>
+        <div class="quick-presets">
+          <button @click="tactics.formation = 'Attacking'; tactics.playingStyle = 'Direct'; tactics.tempo = 'Fast'; tactics.pressing = 'High'" class="preset-btn attacking">
+            🔴 All-Out Attack
+          </button>
+          <button @click="tactics.formation = 'Balanced'; tactics.playingStyle = 'Possession'; tactics.tempo = 'Medium'; tactics.pressing = 'Medium'" class="preset-btn balanced">
+            🟡 Balanced
+          </button>
+          <button @click="tactics.formation = 'Defensive'; tactics.playingStyle = 'Counter-Attack'; tactics.tempo = 'Slow'; tactics.pressing = 'Low'" class="preset-btn defensive">
+            🔵 Park the Bus
+          </button>
+        </div>
+      </div>
 
-        <div class="tactics-grid">
-          <div class="tactics-section">
-            <h3>Formation</h3>
-            <select v-model="tactics.formation" class="tactics-select">
-              <option value="Balanced">Balanced</option>
-              <option value="Attacking">Attacking</option>
-              <option value="Defensive">Defensive</option>
-            </select>
-            <p class="tactic-description">
-              <span v-if="tactics.formation === 'Balanced'">Equal focus on attack and defense</span>
-              <span v-if="tactics.formation === 'Attacking'">More players forward, aggressive play</span>
-              <span v-if="tactics.formation === 'Defensive'">Solid defensive structure, counter-attack focus</span>
-            </p>
+      <div class="tactics-main-content">
+        <!-- Visual Formation Display -->
+        <div class="formation-visual">
+          <div class="pitch">
+            <div class="pitch-lines">
+              <div class="center-circle"></div>
+              <div class="center-line"></div>
+              <div class="penalty-box top"></div>
+              <div class="penalty-box bottom"></div>
+            </div>
+
+            <!-- Formation Indicator -->
+            <div class="formation-badge">
+              <span class="badge-icon">⚔️</span>
+              <span class="badge-text">{{ tactics.formation }} Formation</span>
+            </div>
+
+            <!-- Player Positions (simplified visualization) -->
+            <div class="positions-overlay">
+              <!-- Attack positions -->
+              <div class="position attack" style="top: 15%; left: 50%;">
+                <div class="player-dot"></div>
+                <span class="position-label">FWD</span>
+              </div>
+
+              <!-- Midfield -->
+              <div class="position mid" style="top: 40%; left: 30%;">
+                <div class="player-dot"></div>
+              </div>
+              <div class="position mid" style="top: 40%; left: 50%;">
+                <div class="player-dot"></div>
+              </div>
+              <div class="position mid" style="top: 40%; left: 70%;">
+                <div class="player-dot"></div>
+              </div>
+
+              <!-- Defense -->
+              <div class="position def" style="top: 70%; left: 25%;">
+                <div class="player-dot"></div>
+              </div>
+              <div class="position def" style="top: 70%; left: 50%;">
+                <div class="player-dot"></div>
+              </div>
+              <div class="position def" style="top: 70%; left: 75%;">
+                <div class="player-dot"></div>
+              </div>
+
+              <!-- Goalkeeper -->
+              <div class="position gk" style="top: 90%; left: 50%;">
+                <div class="player-dot"></div>
+                <span class="position-label">GK</span>
+              </div>
+            </div>
+
+            <!-- Tactical Instructions Overlay -->
+            <div class="tactical-overlay">
+              <div v-if="tactics.pressing === 'High'" class="press-indicator high">High Pressing</div>
+              <div v-if="tactics.tempo === 'Fast'" class="tempo-arrows">⚡ Quick Tempo</div>
+            </div>
           </div>
 
-          <div class="tactics-section">
-            <h3>Playing Style</h3>
-            <select v-model="tactics.playingStyle" class="tactics-select">
-              <option value="Possession">Possession</option>
-              <option value="Counter-Attack">Counter-Attack</option>
-              <option value="Direct">Direct</option>
-            </select>
-            <p class="tactic-description">
-              <span v-if="tactics.playingStyle === 'Possession'">Control the ball, patient build-up</span>
-              <span v-if="tactics.playingStyle === 'Counter-Attack'">Fast breaks, exploit space</span>
-              <span v-if="tactics.playingStyle === 'Direct'">Quick forward passes, vertical play</span>
-            </p>
-          </div>
-
-          <div class="tactics-section">
-            <h3>Tempo</h3>
-            <select v-model="tactics.tempo" class="tactics-select">
-              <option value="Slow">Slow</option>
-              <option value="Medium">Medium</option>
-              <option value="Fast">Fast</option>
-            </select>
-            <p class="tactic-description">
-              <span v-if="tactics.tempo === 'Slow'">Controlled, measured approach</span>
-              <span v-if="tactics.tempo === 'Medium'">Balanced game speed</span>
-              <span v-if="tactics.tempo === 'Fast'">High-intensity, quick transitions</span>
-            </p>
-          </div>
-
-          <div class="tactics-section">
-            <h3>Pressing</h3>
-            <select v-model="tactics.pressing" class="tactics-select">
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-            <p class="tactic-description">
-              <span v-if="tactics.pressing === 'Low'">Sit deep, conserve energy</span>
-              <span v-if="tactics.pressing === 'Medium'">Press in middle third</span>
-              <span v-if="tactics.pressing === 'High'">Aggressive pressing, high energy</span>
-            </p>
+          <div class="formation-info">
+            <h3>Formation Impact</h3>
+            <div class="impact-meters">
+              <div class="meter">
+                <label>Attack</label>
+                <div class="meter-bar">
+                  <div class="meter-fill attack" :style="{ width: (tactics.formation === 'Attacking' ? 90 : tactics.formation === 'Balanced' ? 60 : 40) + '%' }"></div>
+                </div>
+              </div>
+              <div class="meter">
+                <label>Defense</label>
+                <div class="meter-bar">
+                  <div class="meter-fill defense" :style="{ width: (tactics.formation === 'Defensive' ? 90 : tactics.formation === 'Balanced' ? 60 : 40) + '%' }"></div>
+                </div>
+              </div>
+              <div class="meter">
+                <label>Possession</label>
+                <div class="meter-bar">
+                  <div class="meter-fill possession" :style="{ width: (tactics.playingStyle === 'Possession' ? 85 : tactics.playingStyle === 'Direct' ? 40 : 65) + '%' }"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="tactics-summary">
+        <!-- Tactical Controls -->
+        <div class="tactics-controls-modern">
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-icon">🎯</span>
+              <h3>Formation</h3>
+            </div>
+            <div class="button-group">
+              <button
+                @click="tactics.formation = 'Attacking'"
+                :class="['tactic-btn', { active: tactics.formation === 'Attacking' }]">
+                <span class="btn-label">Attacking</span>
+                <span class="btn-desc">More forwards</span>
+              </button>
+              <button
+                @click="tactics.formation = 'Balanced'"
+                :class="['tactic-btn', { active: tactics.formation === 'Balanced' }]">
+                <span class="btn-label">Balanced</span>
+                <span class="btn-desc">Equal focus</span>
+              </button>
+              <button
+                @click="tactics.formation = 'Defensive'"
+                :class="['tactic-btn', { active: tactics.formation === 'Defensive' }]">
+                <span class="btn-label">Defensive</span>
+                <span class="btn-desc">Solid back line</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-icon">⚡</span>
+              <h3>Playing Style</h3>
+            </div>
+            <div class="button-group">
+              <button
+                @click="tactics.playingStyle = 'Possession'"
+                :class="['tactic-btn', { active: tactics.playingStyle === 'Possession' }]">
+                <span class="btn-label">Possession</span>
+                <span class="btn-desc">Control ball</span>
+              </button>
+              <button
+                @click="tactics.playingStyle = 'Counter-Attack'"
+                :class="['tactic-btn', { active: tactics.playingStyle === 'Counter-Attack' }]">
+                <span class="btn-label">Counter</span>
+                <span class="btn-desc">Fast breaks</span>
+              </button>
+              <button
+                @click="tactics.playingStyle = 'Direct'"
+                :class="['tactic-btn', { active: tactics.playingStyle === 'Direct' }]">
+                <span class="btn-label">Direct</span>
+                <span class="btn-desc">Vertical play</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-icon">⏱️</span>
+              <h3>Tempo</h3>
+            </div>
+            <div class="button-group">
+              <button
+                @click="tactics.tempo = 'Slow'"
+                :class="['tactic-btn', { active: tactics.tempo === 'Slow' }]">
+                <span class="btn-label">Slow</span>
+                <span class="btn-desc">Controlled</span>
+              </button>
+              <button
+                @click="tactics.tempo = 'Medium'"
+                :class="['tactic-btn', { active: tactics.tempo === 'Medium' }]">
+                <span class="btn-label">Medium</span>
+                <span class="btn-desc">Balanced</span>
+              </button>
+              <button
+                @click="tactics.tempo = 'Fast'"
+                :class="['tactic-btn', { active: tactics.tempo === 'Fast' }]">
+                <span class="btn-label">Fast</span>
+                <span class="btn-desc">High intensity</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-icon">🔥</span>
+              <h3>Pressing</h3>
+            </div>
+            <div class="button-group">
+              <button
+                @click="tactics.pressing = 'Low'"
+                :class="['tactic-btn', { active: tactics.pressing === 'Low' }]">
+                <span class="btn-label">Low</span>
+                <span class="btn-desc">Sit deep</span>
+              </button>
+              <button
+                @click="tactics.pressing = 'Medium'"
+                :class="['tactic-btn', { active: tactics.pressing === 'Medium' }]">
+                <span class="btn-label">Medium</span>
+                <span class="btn-desc">Mid-block</span>
+              </button>
+              <button
+                @click="tactics.pressing = 'High'"
+                :class="['tactic-btn', { active: tactics.pressing === 'High' }]">
+                <span class="btn-label">High</span>
+                <span class="btn-desc">Aggressive</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactics Summary (kept from original) -->
+      <div class="tactics-summary">
           <h3>Current Tactical Setup</h3>
           <div class="tactic-chips">
             <span class="chip">{{ tactics.formation }}</span>
@@ -2506,7 +2802,6 @@ const getOrdinalSuffix = (num) => {
             These tactics will influence match outcomes based on player attributes and opposition strengths.
           </p>
         </div>
-      </div>
     </div>
 
     <!-- Board Tab -->
@@ -5360,6 +5655,478 @@ h3.negative {
   color: #666;
 }
 
+/* ===== CALENDAR STATS BAR ===== */
+.calendar-stats-bar {
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  border-bottom: 2px solid #e0e0e0;
+  padding: 1.5rem 2rem;
+}
+
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.stat-box {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  transition: all 0.3s;
+}
+
+.stat-box:hover {
+  border-color: #1e3c72;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e3c72;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value.positive {
+  color: #4caf50;
+}
+
+.stat-value.negative {
+  color: #ef5350;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-box {
+  grid-column: span 1;
+}
+
+.form-indicators {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
+}
+
+.form-result {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: white;
+}
+
+.form-result.w {
+  background: #4caf50;
+}
+
+.form-result.d {
+  background: #ff9800;
+}
+
+.form-result.l {
+  background: #ef5350;
+}
+
+.no-form {
+  color: #ccc;
+  font-size: 1.5rem;
+}
+
+/* ===== TACTICS TAB STYLES ===== */
+.tactics-tab {
+  padding: 0 !important;
+}
+
+.tactics-header-bar {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tactics-title h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+}
+
+.tactics-title p {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.quick-presets {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.preset-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.preset-btn.attacking {
+  border-color: #ef5350;
+}
+
+.preset-btn.balanced {
+  border-color: #ff9800;
+}
+
+.preset-btn.defensive {
+  border-color: #2196f3;
+}
+
+.tactics-main-content {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 2rem;
+  padding: 2rem;
+  background: #f5f7fa;
+}
+
+/* VISUAL FORMATION DISPLAY */
+.formation-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pitch {
+  background: linear-gradient(180deg, #2d5016 0%, #1a3a0e 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.pitch-lines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+}
+
+.center-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+.center-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: white;
+}
+
+.penalty-box {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 80px;
+  border: 2px solid white;
+}
+
+.penalty-box.top {
+  top: 0;
+  border-top: none;
+}
+
+.penalty-box.bottom {
+  bottom: 0;
+  border-bottom: none;
+}
+
+.formation-badge {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.positions-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.position {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.player-dot {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(circle, #ffffff 0%, #e0e0e0 100%);
+  border: 3px solid #1e3c72;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.position.attack .player-dot {
+  border-color: #ef5350;
+}
+
+.position.mid .player-dot {
+  border-color: #ff9800;
+}
+
+.position.def .player-dot {
+  border-color: #2196f3;
+}
+
+.position.gk .player-dot {
+  border-color: #4caf50;
+}
+
+.position-label {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.tactical-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  pointer-events: none;
+}
+
+.press-indicator {
+  background: rgba(239, 83, 80, 0.9);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  animation: fadeInOut 2s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.tempo-arrows {
+  color: #ffd700;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.formation-info {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.formation-info h3 {
+  margin: 0 0 1.25rem 0;
+  color: #333;
+  font-size: 1.125rem;
+}
+
+.impact-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meter label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.meter-bar {
+  height: 24px;
+  background: #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.meter-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+  border-radius: 12px;
+  position: relative;
+}
+
+.meter-fill.attack {
+  background: linear-gradient(90deg, #ef5350 0%, #f44336 100%);
+}
+
+.meter-fill.defense {
+  background: linear-gradient(90deg, #2196f3 0%, #1976d2 100%);
+}
+
+.meter-fill.possession {
+  background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
+}
+
+/* TACTICAL CONTROLS */
+.tactics-controls-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.control-group {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.control-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.control-icon {
+  font-size: 1.5rem;
+}
+
+.control-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: #333;
+}
+
+.button-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.tactic-btn {
+  background: #f5f7fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tactic-btn:hover {
+  border-color: #1e3c72;
+  background: white;
+  transform: translateY(-2px);
+}
+
+.tactic-btn.active {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border-color: #1e3c72;
+  color: white;
+}
+
+.btn-label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.btn-desc {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.tactic-btn.active .btn-desc {
+  opacity: 0.9;
+}
+
 /* Football Manager-Style Player Cards */
 .player-card.fm-style {
   padding: 1.25rem;
@@ -6740,6 +7507,107 @@ h3.negative {
 
   .grid-teams {
     font-size: 0.8125rem;
+  }
+
+  /* Calendar Stats Bar Mobile */
+  .calendar-stats-bar {
+    padding: 1rem;
+  }
+
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-box {
+    padding: 0.75rem;
+    gap: 0.625rem;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.6875rem;
+  }
+
+  .form-result {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+
+  /* Tactics Mobile */
+  .tactics-header-bar {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quick-presets {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .preset-btn {
+    width: 100%;
+  }
+
+  .tactics-main-content {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+    gap: 1.5rem;
+  }
+
+  .pitch {
+    padding: 1.5rem;
+  }
+
+  .formation-badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.875rem;
+  }
+
+  .player-dot {
+    width: 24px;
+    height: 24px;
+    border-width: 2px;
+  }
+
+  .position-label {
+    font-size: 0.5rem;
+    padding: 0.1875rem 0.375rem;
+  }
+
+  .formation-info {
+    padding: 1rem;
+  }
+
+  .control-group {
+    padding: 1rem;
+  }
+
+  .button-group {
+    grid-template-columns: 1fr;
+  }
+
+  .tactic-btn {
+    padding: 0.875rem;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .btn-label {
+    font-size: 0.875rem;
+  }
+
+  .btn-desc {
+    font-size: 0.6875rem;
   }
 }
 </style>
