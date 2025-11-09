@@ -608,16 +608,32 @@ const simulateMatch = () => {
 const endMatch = () => {
   currentMatch.value.active = false
 
-  // Update player stats
-  squad.value.forEach(player => {
-    if (!player.injured) {
-      player.matches++
-    }
-  })
-
   // Calculate AFL scores (goals * 6 + behinds)
   const homeTotal = currentMatch.value.homeGoals * 6 + currentMatch.value.homeBehinds
   const awayTotal = currentMatch.value.awayGoals * 6 + currentMatch.value.awayBehinds
+
+  // Update fixture with final scores
+  const matchFixture = fixtures.value.find(f =>
+    f.homeTeam === currentMatch.value.homeTeam &&
+    f.awayTeam === currentMatch.value.awayTeam &&
+    f.played
+  )
+  if (matchFixture) {
+    matchFixture.homeScore = homeTotal
+    matchFixture.awayScore = awayTotal
+  }
+
+  // Update player stats - ALL players who participated get match count
+  squad.value.forEach(player => {
+    if (!player.injured && !player.suspended) {
+      player.matches++
+      // Update form history every match
+      player.formHistory.push(player.form)
+      if (player.formHistory.length > 10) {
+        player.formHistory.shift() // Keep only last 10 matches
+      }
+    }
+  })
 
   // Update standings
   const ourTeam = standings.value.find(t => t.team === teamName.value)
@@ -663,9 +679,9 @@ const endMatch = () => {
     })
   }
 
-  // Calculate percentage (AFL style: pointsFor / pointsAgainst * 100)
-  ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100).toFixed(2) : 100
-  opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100).toFixed(2) : 100
+  // Calculate percentage (AFL style: pointsFor / pointsAgainst * 100) - FIXED: store as number
+  ourTeam.percentage = ourTeam.pointsAgainst > 0 ? (ourTeam.pointsFor / ourTeam.pointsAgainst * 100) : 100
+  opponentTeam.percentage = opponentTeam.pointsAgainst > 0 ? (opponentTeam.pointsFor / opponentTeam.pointsAgainst * 100) : 100
 
   // Add match day revenue
   const attendance = Math.floor(Math.random() * 30000) + 20000
@@ -681,9 +697,6 @@ const endMatch = () => {
     message: `Final Score: ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeTotal}) - ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayTotal}). Attendance: ${attendance.toLocaleString()}. Revenue: $${matchRevenue.toLocaleString()}`,
     type: 'match'
   })
-
-  // Toggle home/away for next match
-  currentMatch.value.isHome = !currentMatch.value.isHome
 }
 
 const healAllPlayers = () => {
@@ -938,27 +951,40 @@ const generateFixtures = () => {
   const allFixtures = []
   let matchId = 1
 
-  // Generate round-robin fixtures (each team plays each other twice - home and away)
-  for (let round = 1; round <= calendar.value.totalRounds; round++) {
-    // Alternate home/away each round
-    const isHome = round % 2 === 1
-    const opponentIndex = (round - 1) % opponents.length
-    const opponent = opponents[opponentIndex]
-
-    // Matches on Day 7 of each round (weekend)
+  // Generate proper round-robin fixtures - each team plays each other twice (home and away)
+  // First half: play each opponent once
+  opponents.forEach((opponent, index) => {
+    const round = index + 1
     const matchDay = (round - 1) * calendar.value.daysPerRound + 7
 
     allFixtures.push({
       id: matchId++,
       round: round,
       day: matchDay,
-      homeTeam: isHome ? teamName.value : opponent,
-      awayTeam: isHome ? opponent : teamName.value,
+      homeTeam: teamName.value,
+      awayTeam: opponent,
       played: false,
       homeScore: 0,
       awayScore: 0
     })
-  }
+  })
+
+  // Second half: play each opponent again with reversed home/away
+  opponents.forEach((opponent, index) => {
+    const round = opponents.length + index + 1
+    const matchDay = (round - 1) * calendar.value.daysPerRound + 7
+
+    allFixtures.push({
+      id: matchId++,
+      round: round,
+      day: matchDay,
+      homeTeam: opponent,
+      awayTeam: teamName.value,
+      played: false,
+      homeScore: 0,
+      awayScore: 0
+    })
+  })
 
   fixtures.value = allFixtures
   fixturesGenerated.value = true
@@ -1089,35 +1115,57 @@ const applyTraining = () => {
   }
 
   const bonus = intensityBonus[training.value.intensity]
+  const improvedPlayers = []
 
   squad.value.forEach(player => {
     if (!player.injured && !player.suspended && player.fitness > 80) {
       // Attribute improvements based on training focus
       if (Math.random() < bonus) {
+        let improvedAttr = null
         switch (training.value.focus) {
           case 'attack':
-            if (player.attributes.kicking < 99) player.attributes.kicking++
+            if (player.attributes.kicking < 99) {
+              player.attributes.kicking++
+              improvedAttr = 'Kicking'
+            }
             break
           case 'defense':
-            if (player.attributes.marking < 99) player.attributes.marking++
+            if (player.attributes.marking < 99) {
+              player.attributes.marking++
+              improvedAttr = 'Marking'
+            }
             break
           case 'fitness':
-            if (player.attributes.endurance < 99) player.attributes.endurance++
-            if (player.attributes.pace < 99) player.attributes.pace++
+            if (player.attributes.endurance < 99) {
+              player.attributes.endurance++
+              improvedAttr = 'Endurance'
+            }
+            if (player.attributes.pace < 99 && Math.random() < 0.5) {
+              player.attributes.pace++
+              improvedAttr = improvedAttr ? `${improvedAttr} & Pace` : 'Pace'
+            }
             break
           case 'balanced':
             // Small chance to improve random attribute
             const attrs = ['pace', 'marking', 'kicking', 'endurance']
             const attr = attrs[Math.floor(Math.random() * attrs.length)]
-            if (player.attributes[attr] < 99) player.attributes[attr]++
+            if (player.attributes[attr] < 99) {
+              player.attributes[attr]++
+              improvedAttr = attr.charAt(0).toUpperCase() + attr.slice(1)
+            }
             break
         }
 
         // Update overall based on attributes
-        player.overall = Math.floor(
+        const newOverall = Math.floor(
           (player.attributes.pace + player.attributes.marking +
            player.attributes.kicking + player.attributes.endurance) / 4
         )
+
+        if (newOverall > player.overall || improvedAttr) {
+          player.overall = newOverall
+          improvedPlayers.push({ name: player.name, attr: improvedAttr })
+        }
       }
 
       // Morale boost from good training
@@ -1131,6 +1179,22 @@ const applyTraining = () => {
       player.fitness = Math.max(70, player.fitness - 5)
     }
   })
+
+  // Send training report
+  training.value.lastTrainingDay = calendar.value.currentDay
+
+  if (improvedPlayers.length > 0) {
+    const playerList = improvedPlayers
+      .map(p => `${p.name} (${p.attr})`)
+      .join(', ')
+
+    addInboxMessage({
+      from: 'Training Staff',
+      subject: '💪 Training Session Results',
+      message: `Training session complete! ${improvedPlayers.length} player(s) improved: ${playerList}. Training focus: ${training.value.focus}, Intensity: ${training.value.intensity}.`,
+      type: 'news'
+    })
+  }
 }
 
 const generateRandomEvent = () => {
@@ -1579,6 +1643,37 @@ const getOrdinalSuffix = (num) => {
     <div v-if="activeTab === 'match'" class="tab-content">
       <div v-if="!currentMatch.active" class="match-setup">
         <h2>Start New Match</h2>
+
+        <!-- Scout Reports -->
+        <div v-if="Object.keys(scoutReports).length > 0" class="scout-reports-section">
+          <h3>📋 Opposition Scouting</h3>
+          <div class="scout-reports">
+            <div v-for="(report, team) in scoutReports" :key="team" class="scout-report-card">
+              <h4>{{ team }}</h4>
+              <div class="scout-rating">
+                <span class="rating-label">Team Rating:</span>
+                <span class="rating-value" :class="{
+                  'rating-high': report.rating >= 80,
+                  'rating-medium': report.rating >= 70 && report.rating < 80,
+                  'rating-low': report.rating < 70
+                }">{{ report.rating }}/100</span>
+              </div>
+              <div class="scout-detail">
+                <strong>Strengths:</strong>
+                <ul>
+                  <li v-for="(strength, idx) in report.strengths" :key="idx">{{ strength }}</li>
+                </ul>
+              </div>
+              <div class="scout-detail">
+                <strong>Weaknesses:</strong>
+                <ul>
+                  <li v-for="(weakness, idx) in report.weaknesses" :key="idx">{{ weakness }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="opponent-select">
           <button
             v-for="opponent in availableOpponents"
@@ -2160,6 +2255,53 @@ const getOrdinalSuffix = (num) => {
             <span class="chip">{{ tactics.tempo }} Tempo</span>
             <span class="chip">{{ tactics.pressing }} Pressing</span>
           </div>
+
+          <!-- Tactical Impact Display -->
+          <div class="tactical-impact">
+            <h4>📊 Tactical Impact on Match Performance</h4>
+            <div class="impact-grid">
+              <div class="impact-stat">
+                <span class="impact-label">Attack Modifier:</span>
+                <span class="impact-value" :class="{
+                  positive: getTacticalModifier(true) > 1,
+                  negative: getTacticalModifier(true) < 1
+                }">
+                  {{ (getTacticalModifier(true) > 1 ? '+' : '') }}{{ ((getTacticalModifier(true) - 1) * 100).toFixed(0) }}%
+                </span>
+              </div>
+              <div class="impact-stat">
+                <span class="impact-label">Defense Modifier:</span>
+                <span class="impact-value" :class="{
+                  positive: getTacticalModifier(false) > 1,
+                  negative: getTacticalModifier(false) < 1
+                }">
+                  {{ (getTacticalModifier(false) > 1 ? '+' : '') }}{{ ((getTacticalModifier(false) - 1) * 100).toFixed(0) }}%
+                </span>
+              </div>
+            </div>
+            <div class="impact-breakdown">
+              <p><strong>Formation Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.formation === 'Attacking'">+15% Attack, -10% Defense</li>
+                <li v-if="tactics.formation === 'Defensive'">+15% Defense, -10% Attack</li>
+                <li v-if="tactics.formation === 'Balanced'">No modifiers (balanced approach)</li>
+              </ul>
+              <p><strong>Style Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.playingStyle === 'Direct'">+10% Attack</li>
+                <li v-if="tactics.playingStyle === 'Counter-Attack'">+5% Attack</li>
+                <li v-if="tactics.playingStyle === 'Possession'">No attack bonus (control-focused)</li>
+              </ul>
+              <p><strong>Other Effects:</strong></p>
+              <ul>
+                <li v-if="tactics.tempo === 'Fast'">+5% overall speed</li>
+                <li v-if="tactics.tempo === 'Slow'">-5% overall speed</li>
+                <li v-if="tactics.pressing === 'High'">+10% Defense, more cards</li>
+                <li v-if="tactics.pressing === 'Low'">-5% Defense, fewer cards</li>
+              </ul>
+            </div>
+          </div>
+
           <p class="tactics-note">
             These tactics will influence match outcomes based on player attributes and opposition strengths.
           </p>
@@ -2477,6 +2619,97 @@ const getOrdinalSuffix = (num) => {
 .random-match {
   font-size: 1.2rem;
   padding: 1.5rem 3rem;
+}
+
+/* Scout Reports Styles */
+.scout-reports-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f5f5f5;
+  border-radius: 12px;
+}
+
+.scout-reports-section h3 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  text-align: center;
+}
+
+.scout-reports {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.scout-report-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.scout-report-card h4 {
+  margin: 0 0 1rem 0;
+  color: #1e3c72;
+  font-size: 1.2rem;
+  text-align: center;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.scout-rating {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.rating-label {
+  font-weight: 600;
+  color: #666;
+}
+
+.rating-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.rating-high {
+  color: #4caf50;
+}
+
+.rating-medium {
+  color: #ff9800;
+}
+
+.rating-low {
+  color: #f44336;
+}
+
+.scout-detail {
+  margin-bottom: 1rem;
+}
+
+.scout-detail strong {
+  color: #333;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.scout-detail ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.scout-detail li {
+  color: #666;
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
 }
 
 .match-simulation {
@@ -4140,6 +4373,82 @@ h3.negative {
   margin: 0;
   font-size: 0.9rem;
   opacity: 0.9;
+}
+
+/* Tactical Impact Display */
+.tactical-impact {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.tactical-impact h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.impact-stat {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1rem;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.impact-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.impact-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.impact-value.positive {
+  color: #4caf50;
+}
+
+.impact-value.negative {
+  color: #ff6b6b;
+}
+
+.impact-breakdown {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.impact-breakdown p {
+  margin: 0.75rem 0 0.5rem 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.impact-breakdown p:first-child {
+  margin-top: 0;
+}
+
+.impact-breakdown ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style-type: circle;
+}
+
+.impact-breakdown li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  opacity: 0.95;
 }
 
 /* Board Panel */
