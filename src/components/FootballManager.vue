@@ -5,6 +5,13 @@ import { ref, computed } from 'vue'
 const activeTab = ref('squad')
 const simulationSpeed = ref(500)
 
+// Function to switch tabs and scroll to top (like Football Manager)
+const switchTab = (tabName) => {
+  activeTab.value = tabName
+  // Scroll to top of page smoothly
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 // Team data
 const teamName = ref('Melbourne Demons')
 const budget = ref(50000000)
@@ -1022,6 +1029,57 @@ const seasonProgress = computed(() => {
   return Math.round((calendar.value.currentDay / totalDays) * 100)
 })
 
+// Calendar view options
+const calendarViewMode = ref('compact') // 'compact', 'detailed', 'grid'
+const showPlayedMatches = ref(true)
+const filterView = ref('all') // 'all', 'home', 'away', 'yourTeam'
+
+// Get filtered fixtures based on view
+const filteredFixtures = computed(() => {
+  let filtered = fixtures.value
+
+  if (filterView.value === 'home') {
+    filtered = filtered.filter(f => f.homeTeam === teamName.value)
+  } else if (filterView.value === 'away') {
+    filtered = filtered.filter(f => f.awayTeam === teamName.value)
+  } else if (filterView.value === 'yourTeam') {
+    filtered = filtered.filter(f => f.homeTeam === teamName.value || f.awayTeam === teamName.value)
+  }
+
+  return filtered
+})
+
+// Quick navigation functions
+const jumpToNextMatch = () => {
+  if (nextMatch.value) {
+    const daysToSimulate = nextMatch.value.day - calendar.value.currentDay
+    if (daysToSimulate > 0) {
+      calendar.value.currentDay = nextMatch.value.day
+      calendar.value.currentRound = Math.ceil(calendar.value.currentDay / calendar.value.daysPerRound)
+      addMessage(`⏭️ Advanced to Day ${calendar.value.currentDay} - Match Day!`)
+    }
+  }
+}
+
+const jumpToRound = (round) => {
+  const targetDay = (round - 1) * calendar.value.daysPerRound + 1
+  calendar.value.currentDay = targetDay
+  calendar.value.currentRound = round
+  addMessage(`📅 Jumped to Round ${round}, Day ${targetDay}`)
+}
+
+// Get all fixtures grouped by round
+const fixturesByRound = computed(() => {
+  const grouped = {}
+  filteredFixtures.value.forEach(fixture => {
+    if (!grouped[fixture.round]) {
+      grouped[fixture.round] = []
+    }
+    grouped[fixture.round].push(fixture)
+  })
+  return grouped
+})
+
 const simulateDay = () => {
   calendar.value.currentDay++
 
@@ -1401,63 +1459,63 @@ const getOrdinalSuffix = (num) => {
 
     <nav class="tabs">
       <button
-        @click="activeTab = 'dashboard'"
+        @click="switchTab('dashboard')"
         :class="{ active: activeTab === 'dashboard' }">
         Dashboard
       </button>
       <button
-        @click="activeTab = 'squad'"
+        @click="switchTab('squad')"
         :class="{ active: activeTab === 'squad' }">
         Squad
       </button>
       <button
-        @click="activeTab = 'match'"
+        @click="switchTab('match')"
         :class="{ active: activeTab === 'match' }">
         Match
       </button>
       <button
-        @click="activeTab = 'standings'"
+        @click="switchTab('standings')"
         :class="{ active: activeTab === 'standings' }">
         League
       </button>
       <button
-        @click="activeTab = 'stats'"
+        @click="switchTab('stats')"
         :class="{ active: activeTab === 'stats' }">
         Statistics
       </button>
       <button
-        @click="activeTab = 'inbox'"
+        @click="switchTab('inbox')"
         :class="{ active: activeTab === 'inbox' }">
         Inbox
         <span v-if="unreadMessages > 0" class="badge">{{ unreadMessages }}</span>
       </button>
       <button
-        @click="activeTab = 'staff'"
+        @click="switchTab('staff')"
         :class="{ active: activeTab === 'staff' }">
         Staff
       </button>
       <button
-        @click="activeTab = 'finances'"
+        @click="switchTab('finances')"
         :class="{ active: activeTab === 'finances' }">
         Finances
       </button>
       <button
-        @click="activeTab = 'chat'"
+        @click="switchTab('chat')"
         :class="{ active: activeTab === 'chat' }">
         Chat
       </button>
       <button
-        @click="activeTab = 'calendar'"
+        @click="switchTab('calendar')"
         :class="{ active: activeTab === 'calendar' }">
         Calendar
       </button>
       <button
-        @click="activeTab = 'tactics'"
+        @click="switchTab('tactics')"
         :class="{ active: activeTab === 'tactics' }">
         Tactics
       </button>
       <button
-        @click="activeTab = 'board'"
+        @click="switchTab('board')"
         :class="{ active: activeTab === 'board' }">
         Board
       </button>
@@ -2090,170 +2148,238 @@ const getOrdinalSuffix = (num) => {
     </div>
 
     <!-- Calendar Tab -->
-    <div v-if="activeTab === 'calendar'" class="tab-content">
-      <div class="calendar-header">
-        <div class="calendar-info">
-          <h2>Season {{ calendar.season }}</h2>
-          <div class="calendar-stats">
-            <span class="calendar-stat">
-              <span class="stat-label">Day</span>
-              <span class="stat-value">{{ calendar.currentDay }}</span>
-            </span>
-            <span class="calendar-stat">
-              <span class="stat-label">Week</span>
-              <span class="stat-value">{{ Math.ceil(calendar.currentDay / 7) }}</span>
-            </span>
-            <span class="calendar-stat">
-              <span class="stat-label">Round</span>
-              <span class="stat-value">{{ calendar.currentRound }}/{{ calendar.totalRounds }}</span>
-            </span>
-          </div>
-          <div class="season-progress">
-            <div class="progress-label">Season Progress: {{ seasonProgress }}%</div>
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: seasonProgress + '%' }"></div>
+    <div v-if="activeTab === 'calendar'" class="tab-content calendar-tab">
+      <!-- Compact Header -->
+      <div class="calendar-compact-header">
+        <div class="header-left">
+          <h2>Season {{ calendar.season }} Calendar</h2>
+          <div class="current-info">
+            <span class="info-pill">Day {{ calendar.currentDay }}</span>
+            <span class="info-pill">Week {{ Math.ceil(calendar.currentDay / 7) }}</span>
+            <span class="info-pill highlight">Round {{ calendar.currentRound }}/{{ calendar.totalRounds }}</span>
+            <div class="mini-progress">
+              <div class="mini-progress-fill" :style="{ width: seasonProgress + '%' }"></div>
             </div>
           </div>
         </div>
-        <div class="calendar-controls">
-          <button @click="generateFixtures" v-if="!fixturesGenerated" class="action-btn primary">
-            🏆 Generate Fixtures
+        <div class="header-actions">
+          <button @click="generateFixtures" v-if="!fixturesGenerated" class="btn-primary">
+            Generate Season
           </button>
-          <button @click="simulateDay" class="action-btn">📅 Simulate Day</button>
-          <button @click="simulateWeek" class="action-btn">⏩ Simulate Week</button>
+          <button @click="jumpToNextMatch" v-if="nextMatch" class="btn-accent" title="Jump to next match">
+            ⚡ To Next Match
+          </button>
+          <button @click="simulateDay" class="btn-secondary">+ Day</button>
+          <button @click="simulateWeek" class="btn-secondary">+ Week</button>
         </div>
       </div>
 
-      <!-- Next Match Preview -->
-      <div v-if="nextMatch" class="next-match-card">
-        <div class="match-header">
-          <h3>🏉 Next Match</h3>
-          <div class="match-timing">
-            <span class="timing-badge">{{ getRelativeTime(nextMatch.day) }}</span>
-            <span class="match-meta">Round {{ nextMatch.round }} • Week {{ getWeekNumber(nextMatch.day) }} • Day {{ nextMatch.day }}</span>
-          </div>
+      <!-- View Controls -->
+      <div class="calendar-controls-bar">
+        <div class="view-switcher">
+          <button
+            @click="calendarViewMode = 'compact'"
+            :class="{ active: calendarViewMode === 'compact' }"
+            class="view-btn">
+            📋 Compact
+          </button>
+          <button
+            @click="calendarViewMode = 'detailed'"
+            :class="{ active: calendarViewMode === 'detailed' }"
+            class="view-btn">
+            📄 Detailed
+          </button>
+          <button
+            @click="calendarViewMode = 'grid'"
+            :class="{ active: calendarViewMode === 'grid' }"
+            class="view-btn">
+            📅 Grid
+          </button>
         </div>
-        <div class="match-preview">
-          <div class="team-preview">
-            <h4 :class="{ 'our-team-highlight': nextMatch.homeTeam === teamName }">{{ nextMatch.homeTeam }}</h4>
-            <span class="home-label">HOME</span>
-          </div>
-          <div class="vs">VS</div>
-          <div class="team-preview">
-            <h4 :class="{ 'our-team-highlight': nextMatch.awayTeam === teamName }">{{ nextMatch.awayTeam }}</h4>
-            <span class="away-label">AWAY</span>
-          </div>
+
+        <div class="filter-controls">
+          <select v-model="filterView" class="filter-select">
+            <option value="all">All Fixtures</option>
+            <option value="yourTeam">Your Matches Only</option>
+            <option value="home">Home Only</option>
+            <option value="away">Away Only</option>
+          </select>
+
+          <label class="toggle-label">
+            <input type="checkbox" v-model="showPlayedMatches" />
+            <span>Show Played</span>
+          </label>
         </div>
       </div>
 
-      <!-- Training Settings -->
-      <div class="training-settings">
-        <div class="training-header">
-          <h3>⚡ Training Settings</h3>
-          <p class="training-subtitle">Configure your training schedule applied every 3 days</p>
+      <!-- Next Match Quick View -->
+      <div v-if="nextMatch && fixturesGenerated" class="next-match-compact">
+        <div class="next-icon">⚡</div>
+        <div class="next-content">
+          <span class="next-label">Next Match</span>
+          <span class="next-teams">
+            <strong :class="{ 'is-your-team': nextMatch.homeTeam === teamName }">{{ nextMatch.homeTeam }}</strong>
+            vs
+            <strong :class="{ 'is-your-team': nextMatch.awayTeam === teamName }">{{ nextMatch.awayTeam }}</strong>
+          </span>
         </div>
-        <div class="training-controls">
-          <div class="training-option">
-            <label>
-              <span class="label-icon">🔥</span>
-              <span class="label-text">Intensity</span>
-            </label>
-            <select v-model="training.intensity" class="training-select">
-              <option value="low">🟢 Low - Less fatigue, slower improvement</option>
-              <option value="medium">🟡 Medium - Balanced approach</option>
-              <option value="high">🔴 High - Faster improvement, more fatigue</option>
-            </select>
-          </div>
-          <div class="training-option">
-            <label>
-              <span class="label-icon">🎯</span>
-              <span class="label-text">Focus Area</span>
-            </label>
-            <select v-model="training.focus" class="training-select">
-              <option value="balanced">⚖️ Balanced - All-around development</option>
-              <option value="attack">⚔️ Attack - Improve offensive skills</option>
-              <option value="defense">🛡️ Defense - Strengthen defensive skills</option>
-              <option value="fitness">💪 Fitness - Build stamina & conditioning</option>
-            </select>
-          </div>
-        </div>
-        <div class="training-info">
-          <div class="info-badge">
-            <strong>Current:</strong> {{ training.intensity.charAt(0).toUpperCase() + training.intensity.slice(1) }} intensity, {{ training.focus.charAt(0).toUpperCase() + training.focus.slice(1) }} focus
-          </div>
+        <div class="next-timing">
+          <span class="timing-text">{{ getRelativeTime(nextMatch.day) }}</span>
+          <span class="timing-detail">Round {{ nextMatch.round }}</span>
         </div>
       </div>
 
-      <!-- Fixture List -->
-      <div class="fixtures-section">
-        <h3>📋 Upcoming Fixtures</h3>
-        <div v-if="!fixturesGenerated" class="empty-state">
-          <div class="empty-icon">📅</div>
-          <p>Click "Generate Fixtures" to create the season schedule</p>
+      <!-- Empty State -->
+      <div v-if="!fixturesGenerated" class="calendar-empty">
+        <div class="empty-large">
+          <div class="empty-icon-xl">📅</div>
+          <h3>Season Not Started</h3>
+          <p>Generate fixtures to begin the season and view your match schedule</p>
         </div>
-        <div v-else-if="upcomingFixtures.length === 0" class="empty-state">
-          <div class="empty-icon">🎉</div>
-          <p>Season complete! No upcoming fixtures.</p>
-        </div>
-        <div v-else class="fixtures-list">
-          <div
-            v-for="fixture in upcomingFixtures"
-            :key="fixture.id"
-            class="fixture-card"
-            :class="{ 'next-fixture': fixture.day === nextMatch?.day }">
-            <div class="fixture-header-row">
-              <div class="fixture-round">R{{ fixture.round }}</div>
-              <div class="fixture-timing">
-                <span class="relative-time">{{ getRelativeTime(fixture.day) }}</span>
-                <span class="fixture-meta">Week {{ getWeekNumber(fixture.day) }} • Day {{ fixture.day }}</span>
+      </div>
+
+      <!-- Main Calendar -->
+      <div v-else class="calendar-body">
+
+        <!-- COMPACT VIEW (Default - List by Round) -->
+        <div v-if="calendarViewMode === 'compact'" class="view-compact">
+          <!-- Round Navigator -->
+          <div class="round-nav">
+            <button
+              v-for="r in calendar.totalRounds"
+              :key="r"
+              @click="jumpToRound(r)"
+              :class="['round-btn', {
+                'current': r === calendar.currentRound,
+                'past': r < calendar.currentRound,
+                'future': r > calendar.currentRound
+              }]">
+              {{ r }}
+            </button>
+          </div>
+
+          <!-- Fixtures by Round -->
+          <div class="rounds-list">
+            <div v-for="round in Object.keys(fixturesByRound).sort((a,b) => Number(a) - Number(b))" :key="round" class="round-block">
+              <div class="round-title">
+                <span class="round-num">Round {{ round }}</span>
+                <span class="round-progress">{{ fixturesByRound[round].filter(f => f.played).length }}/{{ fixturesByRound[round].length }}</span>
+              </div>
+
+              <div class="fixtures-compact">
+                <div
+                  v-for="fixture in fixturesByRound[round]"
+                  :key="fixture.id"
+                  v-show="showPlayedMatches || !fixture.played"
+                  :class="['fixture-row', {
+                    'next': nextMatch && fixture.id === nextMatch.id,
+                    'played': fixture.played,
+                    'your-match': fixture.homeTeam === teamName || fixture.awayTeam === teamName,
+                    'won': fixture.played && ((fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) || (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore)),
+                    'lost': fixture.played && ((fixture.homeTeam === teamName && fixture.homeScore < fixture.awayScore) || (fixture.awayTeam === teamName && fixture.awayScore < fixture.homeScore))
+                  }]">
+
+                  <div class="fix-day">D{{ fixture.day }}</div>
+
+                  <div class="fix-match">
+                    <span :class="['team', { 'you': fixture.homeTeam === teamName }]">{{ fixture.homeTeam }}</span>
+                    <span class="vs">{{ fixture.played ? `${fixture.homeScore}-${fixture.awayScore}` : 'vs' }}</span>
+                    <span :class="['team', { 'you': fixture.awayTeam === teamName }]">{{ fixture.awayTeam }}</span>
+                  </div>
+
+                  <div class="fix-status">
+                    {{ fixture.played ? 'FT' : getRelativeTime(fixture.day) }}
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="fixture-teams">
-              <span :class="{ 'our-team': fixture.homeTeam === teamName }">
-                {{ fixture.homeTeam }}
-              </span>
-              <span class="fixture-vs">vs</span>
-              <span :class="{ 'our-team': fixture.awayTeam === teamName }">
-                {{ fixture.awayTeam }}
-              </span>
+          </div>
+        </div>
+
+        <!-- DETAILED VIEW (Card Style) -->
+        <div v-if="calendarViewMode === 'detailed'" class="view-detailed">
+          <div class="fixtures-detailed-list">
+            <div
+              v-for="fixture in filteredFixtures"
+              :key="fixture.id"
+              v-show="showPlayedMatches || !fixture.played"
+              :class="['fixture-detail-card', {
+                'next': nextMatch && fixture.id === nextMatch.id,
+                'played': fixture.played,
+                'won': fixture.played && ((fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) || (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore)),
+                'lost': fixture.played && ((fixture.homeTeam === teamName && fixture.homeScore < fixture.awayScore) || (fixture.awayTeam === teamName && fixture.awayScore < fixture.homeScore))
+              }]">
+
+              <div class="detail-header">
+                <div class="detail-badges">
+                  <span class="badge">R{{ fixture.round }}</span>
+                  <span class="badge">D{{ fixture.day }}</span>
+                  <span class="badge">W{{ getWeekNumber(fixture.day) }}</span>
+                </div>
+                <div class="detail-status">
+                  {{ fixture.played ? 'FINAL' : getRelativeTime(fixture.day).toUpperCase() }}
+                </div>
+              </div>
+
+              <div class="detail-matchup">
+                <div class="detail-team home">
+                  <div :class="['team-name', { 'your-team': fixture.homeTeam === teamName }]">
+                    {{ fixture.homeTeam }}
+                  </div>
+                  <div class="team-venue">HOME</div>
+                  <div v-if="fixture.played" class="team-score">{{ fixture.homeScore }}</div>
+                </div>
+
+                <div class="detail-vs">
+                  {{ fixture.played ? '—' : 'VS' }}
+                </div>
+
+                <div class="detail-team away">
+                  <div :class="['team-name', { 'your-team': fixture.awayTeam === teamName }]">
+                    {{ fixture.awayTeam }}
+                  </div>
+                  <div class="team-venue">AWAY</div>
+                  <div v-if="fixture.played" class="team-score">{{ fixture.awayScore }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <h3 style="margin-top: 2rem;">📊 Recent Results</h3>
-        <div class="fixtures-list">
-          <div v-if="fixtures.filter(f => f.played).length === 0" class="empty-state">
-            <div class="empty-icon">🏉</div>
-            <p>No matches played yet</p>
-          </div>
-          <div
-            v-for="fixture in fixtures.filter(f => f.played).slice(-5).reverse()"
-            :key="fixture.id"
-            class="fixture-card played"
-            :class="{
-              'won': (fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) ||
-                     (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore),
-              'lost': (fixture.homeTeam === teamName && fixture.homeScore < fixture.awayScore) ||
-                      (fixture.awayTeam === teamName && fixture.awayScore < fixture.homeScore),
-              'draw': fixture.homeScore === fixture.awayScore
-            }">
-            <div class="fixture-header-row">
-              <div class="fixture-round">R{{ fixture.round }}</div>
-              <div class="fixture-timing">
-                <span class="fixture-meta">Week {{ getWeekNumber(fixture.day) }} • Day {{ fixture.day }}</span>
+        <!-- GRID VIEW (Condensed Grid) -->
+        <div v-if="calendarViewMode === 'grid'" class="view-grid">
+          <div class="grid-rounds">
+            <div v-for="round in Object.keys(fixturesByRound).sort((a,b) => Number(a) - Number(b))" :key="round" class="grid-round">
+              <div class="grid-round-header">
+                <h4>Round {{ round }}</h4>
               </div>
-            </div>
-            <div class="fixture-teams">
-              <span :class="{ 'our-team': fixture.homeTeam === teamName }">
-                {{ fixture.homeTeam }}
-              </span>
-              <span class="fixture-score">{{ fixture.homeScore }} - {{ fixture.awayScore }}</span>
-              <span :class="{ 'our-team': fixture.awayTeam === teamName }">
-                {{ fixture.awayTeam }}
-              </span>
+
+              <div class="grid-fixtures">
+                <div
+                  v-for="fixture in fixturesByRound[round]"
+                  :key="fixture.id"
+                  v-show="showPlayedMatches || !fixture.played"
+                  :class="['grid-fix', {
+                    'played': fixture.played,
+                    'yours': fixture.homeTeam === teamName || fixture.awayTeam === teamName,
+                    'next': nextMatch && fixture.id === nextMatch.id
+                  }]">
+
+                  <div class="grid-teams">
+                    <span :class="{ 'you': fixture.homeTeam === teamName }">{{ fixture.homeTeam }}</span>
+                    <span class="grid-v">v</span>
+                    <span :class="{ 'you': fixture.awayTeam === teamName }">{{ fixture.awayTeam }}</span>
+                  </div>
+
+                  <div class="grid-info">
+                    {{ fixture.played ? `${fixture.homeScore}-${fixture.awayScore}` : `D${fixture.day}` }}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -4596,6 +4722,644 @@ h3.negative {
   color: #888;
 }
 
+/* ===== NEW CALENDAR STYLES ===== */
+
+/* Calendar Tab Layout */
+.calendar-tab {
+  padding: 0 !important;
+}
+
+/* Compact Header */
+.calendar-compact-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.header-left h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.current-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.info-pill {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.info-pill.highlight {
+  background: rgba(76, 175, 80, 0.9);
+}
+
+.mini-progress {
+  width: 120px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  background: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Controls Bar */
+.calendar-controls-bar {
+  background: #f5f7fa;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.view-switcher {
+  display: flex;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+}
+
+.view-btn {
+  background: transparent;
+  border: none;
+  padding: 0.625rem 1.125rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn.active {
+  background: #1e3c72;
+  color: white;
+}
+
+.view-btn:hover:not(.active) {
+  background: #f0f0f0;
+}
+
+.filter-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 0.625rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: white;
+  cursor: pointer;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Next Match Compact */
+.next-match-compact {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 2px solid #45a049;
+}
+
+.next-icon {
+  font-size: 2rem;
+}
+
+.next-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.next-label {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.next-teams {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.next-teams .is-your-team {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.next-timing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.timing-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.timing-detail {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+/* Empty State */
+.calendar-empty {
+  padding: 4rem 2rem;
+}
+
+.empty-large {
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.empty-icon-xl {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+}
+
+.empty-large h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.empty-large p {
+  margin: 0 0 2rem 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+/* Calendar Body */
+.calendar-body {
+  background: white;
+}
+
+/* ===== COMPACT VIEW ===== */
+.view-compact {
+  padding: 0;
+}
+
+.round-nav {
+  display: flex;
+  gap: 0.375rem;
+  padding: 1.5rem 2rem;
+  background: #fafbfc;
+  border-bottom: 2px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.round-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.round-btn.current {
+  background: #1e3c72;
+  color: white;
+  border-color: #1e3c72;
+}
+
+.round-btn.past {
+  background: #e8f5e9;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.round-btn:hover:not(.current) {
+  border-color: #1e3c72;
+  transform: scale(1.05);
+}
+
+.rounds-list {
+  padding: 0;
+}
+
+.round-block {
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.round-title {
+  background: linear-gradient(135deg, #2c5364 0%, #1e3c72 100%);
+  color: white;
+  padding: 0.875rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+
+.round-num {
+  font-size: 1rem;
+}
+
+.round-progress {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.fixtures-compact {
+  padding: 0;
+}
+
+.fixture-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.2s;
+  background: white;
+}
+
+.fixture-row:hover {
+  background: #fafbfc;
+}
+
+.fixture-row.next {
+  background: #fff8e1;
+  border-left: 4px solid #ff9800;
+}
+
+.fixture-row.played {
+  opacity: 0.7;
+}
+
+.fixture-row.your-match {
+  background: #f5f9ff;
+}
+
+.fixture-row.won {
+  border-left: 4px solid #4caf50;
+  background: #f1f8f4;
+}
+
+.fixture-row.lost {
+  border-left: 4px solid #ef5350;
+  background: #fef5f5;
+}
+
+.fix-day {
+  background: #1e3c72;
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.fix-match {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9375rem;
+}
+
+.fix-match .team {
+  font-weight: 600;
+  color: #333;
+}
+
+.fix-match .team.you {
+  color: #1e3c72;
+  font-weight: 700;
+}
+
+.fix-match .vs {
+  color: #999;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.fix-status {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #666;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ===== DETAILED VIEW ===== */
+.view-detailed {
+  padding: 2rem;
+}
+
+.fixtures-detailed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fixture-detail-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.fixture-detail-card:hover {
+  border-color: #1e3c72;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.fixture-detail-card.next {
+  border-color: #ff9800;
+  border-width: 3px;
+  background: #fff8e1;
+}
+
+.fixture-detail-card.won {
+  border-left-width: 6px;
+  border-left-color: #4caf50;
+}
+
+.fixture-detail-card.lost {
+  border-left-width: 6px;
+  border-left-color: #ef5350;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px dashed #e0e0e0;
+}
+
+.detail-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.detail-badges .badge {
+  background: #1e3c72;
+  color: white;
+  padding: 0.375rem 0.875rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.detail-status {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #666;
+}
+
+.detail-matchup {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.detail-team {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+}
+
+.team-name.your-team {
+  color: #1e3c72;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.team-venue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.team-score {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e3c72;
+  margin-top: 0.5rem;
+}
+
+.detail-vs {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #999;
+}
+
+/* ===== GRID VIEW ===== */
+.view-grid {
+  padding: 2rem;
+}
+
+.grid-rounds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.grid-round {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.grid-round-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 1rem 1.25rem;
+}
+
+.grid-round-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.grid-fixtures {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.grid-fix {
+  background: #f9f9f9;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.875rem;
+  transition: all 0.2s;
+}
+
+.grid-fix:hover {
+  border-color: #1e3c72;
+  background: white;
+}
+
+.grid-fix.yours {
+  background: #f5f9ff;
+  border-color: #1e3c72;
+}
+
+.grid-fix.next {
+  background: #fff8e1;
+  border-color: #ff9800;
+  border-width: 3px;
+}
+
+.grid-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.grid-teams .you {
+  color: #1e3c72;
+  font-weight: 700;
+}
+
+.grid-v {
+  color: #999;
+  font-size: 0.75rem;
+}
+
+.grid-info {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #666;
+}
+
 /* Football Manager-Style Player Cards */
 .player-card.fm-style {
   padding: 1.25rem;
@@ -5818,6 +6582,164 @@ h3.negative {
 
   .match-meta {
     font-size: 0.75rem;
+  }
+
+  /* New Calendar Mobile Styles */
+  .calendar-compact-header {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-left h2 {
+    font-size: 1.25rem;
+  }
+
+  .current-info {
+    gap: 0.5rem;
+  }
+
+  .info-pill {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    flex: 1;
+    text-align: center;
+  }
+
+  .mini-progress {
+    width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .header-actions button {
+    width: 100%;
+  }
+
+  .calendar-controls-bar {
+    padding: 0.875rem 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .view-switcher {
+    width: 100%;
+  }
+
+  .view-btn {
+    flex: 1;
+    padding: 0.625rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .filter-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .next-match-compact {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .next-timing {
+    align-items: flex-start;
+  }
+
+  .round-nav {
+    padding: 1rem;
+    gap: 0.25rem;
+  }
+
+  .round-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.75rem;
+  }
+
+  .round-title {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .fixture-row {
+    padding: 0.875rem 1rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .fix-day {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    min-width: 45px;
+  }
+
+  .fix-match {
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fix-status {
+    width: 100%;
+    text-align: left;
+    font-size: 0.75rem;
+  }
+
+  .view-detailed {
+    padding: 1rem;
+  }
+
+  .fixtures-detailed-list {
+    gap: 1rem;
+  }
+
+  .fixture-detail-card {
+    padding: 1rem;
+  }
+
+  .detail-matchup {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .team-name {
+    font-size: 1.125rem;
+  }
+
+  .team-score {
+    font-size: 1.5rem;
+  }
+
+  .view-grid {
+    padding: 1rem;
+  }
+
+  .grid-rounds {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .grid-fixtures {
+    padding: 0.75rem;
+    gap: 0.625rem;
+  }
+
+  .grid-fix {
+    padding: 0.75rem;
+  }
+
+  .grid-teams {
+    font-size: 0.8125rem;
   }
 }
 </style>
