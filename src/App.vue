@@ -10,7 +10,7 @@ import FootballManager from './components/FootballManager.vue'
 
     <footer class="app-footer">
       <div class="footer-content">
-        <p class="footer-text">&copy; 2024 Football Manager Simulator. Built with Vue 3 + Vite</p>
+        <p class="footer-text">&copy; 2024 AFL Manager Simulator. Built with Vue 3 + Vite</p>
       </div>
     </footer>
   </div>
