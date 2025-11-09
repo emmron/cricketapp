@@ -1001,6 +1001,27 @@ const nextMatch = computed(() => {
   return upcomingFixtures.value[0] || null
 })
 
+// Helper function to get relative time description
+const getRelativeTime = (targetDay) => {
+  const daysUntil = targetDay - calendar.value.currentDay
+  if (daysUntil === 0) return 'Today'
+  if (daysUntil === 1) return 'Tomorrow'
+  if (daysUntil === -1) return 'Yesterday'
+  if (daysUntil > 0) return `In ${daysUntil} days`
+  return `${Math.abs(daysUntil)} days ago`
+}
+
+// Helper function to get week number from day
+const getWeekNumber = (day) => {
+  return Math.ceil(day / 7)
+}
+
+// Calculate season progress percentage
+const seasonProgress = computed(() => {
+  const totalDays = calendar.value.totalRounds * calendar.value.daysPerRound
+  return Math.round((calendar.value.currentDay / totalDays) * 100)
+})
+
 const simulateDay = () => {
   calendar.value.currentDay++
 
@@ -2074,109 +2095,162 @@ const getOrdinalSuffix = (num) => {
         <div class="calendar-info">
           <h2>Season {{ calendar.season }}</h2>
           <div class="calendar-stats">
-            <span class="calendar-stat">Day {{ calendar.currentDay }}</span>
-            <span class="calendar-stat">Round {{ calendar.currentRound }}/{{ calendar.totalRounds }}</span>
-            <span class="calendar-stat">Week {{ Math.ceil(calendar.currentDay / 7) }}</span>
+            <span class="calendar-stat">
+              <span class="stat-label">Day</span>
+              <span class="stat-value">{{ calendar.currentDay }}</span>
+            </span>
+            <span class="calendar-stat">
+              <span class="stat-label">Week</span>
+              <span class="stat-value">{{ Math.ceil(calendar.currentDay / 7) }}</span>
+            </span>
+            <span class="calendar-stat">
+              <span class="stat-label">Round</span>
+              <span class="stat-value">{{ calendar.currentRound }}/{{ calendar.totalRounds }}</span>
+            </span>
+          </div>
+          <div class="season-progress">
+            <div class="progress-label">Season Progress: {{ seasonProgress }}%</div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: seasonProgress + '%' }"></div>
+            </div>
           </div>
         </div>
         <div class="calendar-controls">
-          <button @click="generateFixtures" v-if="!fixturesGenerated" class="action-btn">
-            Generate Fixtures
+          <button @click="generateFixtures" v-if="!fixturesGenerated" class="action-btn primary">
+            🏆 Generate Fixtures
           </button>
-          <button @click="simulateDay" class="action-btn">Simulate Day</button>
-          <button @click="simulateWeek" class="action-btn">Simulate Week</button>
+          <button @click="simulateDay" class="action-btn">📅 Simulate Day</button>
+          <button @click="simulateWeek" class="action-btn">⏩ Simulate Week</button>
         </div>
       </div>
 
       <!-- Next Match Preview -->
       <div v-if="nextMatch" class="next-match-card">
-        <h3>🏉 Next Match - Day {{ nextMatch.day }} (Round {{ nextMatch.round }})</h3>
+        <div class="match-header">
+          <h3>🏉 Next Match</h3>
+          <div class="match-timing">
+            <span class="timing-badge">{{ getRelativeTime(nextMatch.day) }}</span>
+            <span class="match-meta">Round {{ nextMatch.round }} • Week {{ getWeekNumber(nextMatch.day) }} • Day {{ nextMatch.day }}</span>
+          </div>
+        </div>
         <div class="match-preview">
           <div class="team-preview">
-            <h4>{{ nextMatch.homeTeam }}</h4>
+            <h4 :class="{ 'our-team-highlight': nextMatch.homeTeam === teamName }">{{ nextMatch.homeTeam }}</h4>
             <span class="home-label">HOME</span>
           </div>
           <div class="vs">VS</div>
           <div class="team-preview">
-            <h4>{{ nextMatch.awayTeam }}</h4>
+            <h4 :class="{ 'our-team-highlight': nextMatch.awayTeam === teamName }">{{ nextMatch.awayTeam }}</h4>
             <span class="away-label">AWAY</span>
           </div>
         </div>
-        <p class="days-until">{{ nextMatch.day - calendar.currentDay }} days until match</p>
       </div>
 
       <!-- Training Settings -->
       <div class="training-settings">
-        <h3>⚡ Training Settings</h3>
+        <div class="training-header">
+          <h3>⚡ Training Settings</h3>
+          <p class="training-subtitle">Configure your training schedule applied every 3 days</p>
+        </div>
         <div class="training-controls">
           <div class="training-option">
-            <label>Intensity:</label>
+            <label>
+              <span class="label-icon">🔥</span>
+              <span class="label-text">Intensity</span>
+            </label>
             <select v-model="training.intensity" class="training-select">
-              <option value="low">Low (Less fatigue, slower improvement)</option>
-              <option value="medium">Medium (Balanced)</option>
-              <option value="high">High (Faster improvement, more fatigue)</option>
+              <option value="low">🟢 Low - Less fatigue, slower improvement</option>
+              <option value="medium">🟡 Medium - Balanced approach</option>
+              <option value="high">🔴 High - Faster improvement, more fatigue</option>
             </select>
           </div>
           <div class="training-option">
-            <label>Focus:</label>
+            <label>
+              <span class="label-icon">🎯</span>
+              <span class="label-text">Focus Area</span>
+            </label>
             <select v-model="training.focus" class="training-select">
-              <option value="balanced">Balanced</option>
-              <option value="attack">Attack</option>
-              <option value="defense">Defense</option>
-              <option value="fitness">Fitness</option>
+              <option value="balanced">⚖️ Balanced - All-around development</option>
+              <option value="attack">⚔️ Attack - Improve offensive skills</option>
+              <option value="defense">🛡️ Defense - Strengthen defensive skills</option>
+              <option value="fitness">💪 Fitness - Build stamina & conditioning</option>
             </select>
+          </div>
+        </div>
+        <div class="training-info">
+          <div class="info-badge">
+            <strong>Current:</strong> {{ training.intensity.charAt(0).toUpperCase() + training.intensity.slice(1) }} intensity, {{ training.focus.charAt(0).toUpperCase() + training.focus.slice(1) }} focus
           </div>
         </div>
       </div>
 
       <!-- Fixture List -->
       <div class="fixtures-section">
-        <h3>Upcoming Fixtures</h3>
+        <h3>📋 Upcoming Fixtures</h3>
         <div v-if="!fixturesGenerated" class="empty-state">
-          Click "Generate Fixtures" to create the season schedule
+          <div class="empty-icon">📅</div>
+          <p>Click "Generate Fixtures" to create the season schedule</p>
+        </div>
+        <div v-else-if="upcomingFixtures.length === 0" class="empty-state">
+          <div class="empty-icon">🎉</div>
+          <p>Season complete! No upcoming fixtures.</p>
         </div>
         <div v-else class="fixtures-list">
           <div
             v-for="fixture in upcomingFixtures"
             :key="fixture.id"
-            class="fixture-card">
-            <div class="fixture-round">Round {{ fixture.round }}</div>
-            <div class="fixture-details">
-              <div class="fixture-teams">
-                <span :class="{ 'our-team': fixture.homeTeam === teamName }">
-                  {{ fixture.homeTeam }}
-                </span>
-                <span class="fixture-vs">vs</span>
-                <span :class="{ 'our-team': fixture.awayTeam === teamName }">
-                  {{ fixture.awayTeam }}
-                </span>
+            class="fixture-card"
+            :class="{ 'next-fixture': fixture.day === nextMatch?.day }">
+            <div class="fixture-header-row">
+              <div class="fixture-round">R{{ fixture.round }}</div>
+              <div class="fixture-timing">
+                <span class="relative-time">{{ getRelativeTime(fixture.day) }}</span>
+                <span class="fixture-meta">Week {{ getWeekNumber(fixture.day) }} • Day {{ fixture.day }}</span>
               </div>
-              <div class="fixture-day">Day {{ fixture.day }}</div>
+            </div>
+            <div class="fixture-teams">
+              <span :class="{ 'our-team': fixture.homeTeam === teamName }">
+                {{ fixture.homeTeam }}
+              </span>
+              <span class="fixture-vs">vs</span>
+              <span :class="{ 'our-team': fixture.awayTeam === teamName }">
+                {{ fixture.awayTeam }}
+              </span>
             </div>
           </div>
         </div>
 
-        <h3 style="margin-top: 2rem;">Recent Results</h3>
+        <h3 style="margin-top: 2rem;">📊 Recent Results</h3>
         <div class="fixtures-list">
           <div v-if="fixtures.filter(f => f.played).length === 0" class="empty-state">
-            No matches played yet
+            <div class="empty-icon">🏉</div>
+            <p>No matches played yet</p>
           </div>
           <div
             v-for="fixture in fixtures.filter(f => f.played).slice(-5).reverse()"
             :key="fixture.id"
-            class="fixture-card played">
-            <div class="fixture-round">Round {{ fixture.round }}</div>
-            <div class="fixture-details">
-              <div class="fixture-teams">
-                <span :class="{ 'our-team': fixture.homeTeam === teamName }">
-                  {{ fixture.homeTeam }}
-                </span>
-                <span class="fixture-score">{{ fixture.homeScore }} - {{ fixture.awayScore }}</span>
-                <span :class="{ 'our-team': fixture.awayTeam === teamName }">
-                  {{ fixture.awayTeam }}
-                </span>
+            class="fixture-card played"
+            :class="{
+              'won': (fixture.homeTeam === teamName && fixture.homeScore > fixture.awayScore) ||
+                     (fixture.awayTeam === teamName && fixture.awayScore > fixture.homeScore),
+              'lost': (fixture.homeTeam === teamName && fixture.homeScore < fixture.awayScore) ||
+                      (fixture.awayTeam === teamName && fixture.awayScore < fixture.homeScore),
+              'draw': fixture.homeScore === fixture.awayScore
+            }">
+            <div class="fixture-header-row">
+              <div class="fixture-round">R{{ fixture.round }}</div>
+              <div class="fixture-timing">
+                <span class="fixture-meta">Week {{ getWeekNumber(fixture.day) }} • Day {{ fixture.day }}</span>
               </div>
-              <div class="fixture-day">Day {{ fixture.day }}</div>
+            </div>
+            <div class="fixture-teams">
+              <span :class="{ 'our-team': fixture.homeTeam === teamName }">
+                {{ fixture.homeTeam }}
+              </span>
+              <span class="fixture-score">{{ fixture.homeScore }} - {{ fixture.awayScore }}</span>
+              <span :class="{ 'our-team': fixture.awayTeam === teamName }">
+                {{ fixture.awayTeam }}
+              </span>
             </div>
           </div>
         </div>
@@ -4143,12 +4217,59 @@ h3.negative {
   border-radius: 20px;
   font-size: 0.95rem;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.calendar-stat .stat-label {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-stat .stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.season-progress {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.progress-label {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.95;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #66bb6a 100%);
+  border-radius: 10px;
+  transition: width 0.5s ease;
 }
 
 .calendar-controls {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  border: none;
 }
 
 .next-match-card {
@@ -4160,9 +4281,34 @@ h3.negative {
   text-align: center;
 }
 
-.next-match-card h3 {
-  margin: 0 0 1.5rem 0;
+.match-header {
+  margin-bottom: 1.5rem;
+}
+
+.match-header h3 {
+  margin: 0 0 0.75rem 0;
   font-size: 1.3rem;
+}
+
+.match-timing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timing-badge {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.match-meta {
+  font-size: 0.875rem;
+  opacity: 0.9;
 }
 
 .match-preview {
@@ -4183,6 +4329,12 @@ h3.negative {
 .team-preview h4 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.our-team-highlight {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .home-label,
@@ -4207,16 +4359,26 @@ h3.negative {
 }
 
 .training-settings {
-  background: white;
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
   border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.training-settings h3 {
-  margin: 0 0 1.25rem 0;
+.training-header {
+  margin-bottom: 1.25rem;
+}
+
+.training-header h3 {
+  margin: 0 0 0.5rem 0;
   color: #333;
+}
+
+.training-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #666;
 }
 
 .training-controls {
@@ -4235,6 +4397,17 @@ h3.negative {
   font-weight: 600;
   color: #333;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label-icon {
+  font-size: 1.125rem;
+}
+
+.label-text {
+  flex: 1;
 }
 
 .training-select {
@@ -4250,6 +4423,27 @@ h3.negative {
 .training-select:focus {
   outline: none;
   border-color: #1e3c72;
+  box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+}
+
+.training-select:hover {
+  border-color: #4caf50;
+}
+
+.training-info {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 2px dashed #e0e0e0;
+}
+
+.info-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  text-align: center;
+  border: 1px solid #4caf50;
 }
 
 .fixtures-section {
@@ -4272,8 +4466,8 @@ h3.negative {
 
 .fixture-card {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 1.25rem;
   background: #f9f9f9;
   border: 2px solid #e0e0e0;
@@ -4284,36 +4478,82 @@ h3.negative {
 .fixture-card:hover {
   border-color: #1e3c72;
   background: #f5f7fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.fixture-card.next-fixture {
+  background: #fff8e1;
+  border-color: #ffa726;
+  border-width: 3px;
 }
 
 .fixture-card.played {
+  background: #f5f5f5;
+  border-color: #bdbdbd;
+}
+
+.fixture-card.played.won {
   background: #e8f5e9;
   border-color: #4caf50;
+  border-left-width: 6px;
+}
+
+.fixture-card.played.lost {
+  background: #ffebee;
+  border-color: #ef5350;
+  border-left-width: 6px;
+}
+
+.fixture-card.played.draw {
+  background: #fff9c4;
+  border-color: #ffb300;
+  border-left-width: 6px;
+}
+
+.fixture-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
 }
 
 .fixture-round {
   background: #1e3c72;
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.375rem 0.875rem;
   border-radius: 6px;
   font-weight: 600;
   font-size: 0.85rem;
-  min-width: 80px;
   text-align: center;
+  white-space: nowrap;
 }
 
-.fixture-details {
-  flex: 1;
+.fixture-timing {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.relative-time {
+  font-weight: 700;
+  color: #1e3c72;
+  font-size: 0.9375rem;
+}
+
+.fixture-meta {
+  font-size: 0.75rem;
+  color: #666;
 }
 
 .fixture-teams {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #333;
 }
@@ -4321,24 +4561,39 @@ h3.negative {
 .fixture-vs {
   color: #999;
   font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .fixture-score {
-  background: #4caf50;
+  background: #1e3c72;
   color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  padding: 0.375rem 0.875rem;
+  border-radius: 6px;
   font-weight: 700;
-}
-
-.fixture-day {
-  color: #666;
-  font-size: 0.85rem;
+  font-size: 0.9375rem;
 }
 
 .fixture-teams .our-team {
   color: #1e3c72;
   font-weight: 700;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #666;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
+  color: #888;
 }
 
 /* Football Manager-Style Player Cards */
@@ -5319,6 +5574,19 @@ h3.negative {
   .standings-table th {
     font-size: 0.6875rem;
   }
+
+  /* Calendar Tablet Styles */
+  .training-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .match-preview {
+    gap: 2rem;
+  }
+
+  .fixture-header-row {
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -5384,6 +5652,172 @@ h3.negative {
   .quick-action-btn {
     padding: 0.875rem 1.25rem;
     font-size: 0.875rem;
+  }
+
+  /* Calendar Mobile Styles */
+  .calendar-header {
+    padding: 1.5rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .calendar-info h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .calendar-stats {
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .calendar-stat {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    flex: 1;
+    text-align: center;
+  }
+
+  .calendar-controls {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .calendar-controls .action-btn {
+    width: 100%;
+  }
+
+  .next-match-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .next-match-card h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .match-preview {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .team-preview h4 {
+    font-size: 1.125rem;
+  }
+
+  .vs {
+    font-size: 1.125rem;
+  }
+
+  .days-until {
+    font-size: 0.9375rem;
+  }
+
+  .training-settings {
+    padding: 1.25rem 1rem;
+  }
+
+  .training-header h3 {
+    font-size: 1rem;
+  }
+
+  .training-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .training-controls {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .training-select {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .training-info {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .info-badge {
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .label-icon {
+    font-size: 1rem;
+  }
+
+  .fixtures-section {
+    padding: 1.25rem 1rem;
+  }
+
+  .fixtures-section h3 {
+    font-size: 1rem;
+  }
+
+  .fixture-card {
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .fixture-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .fixture-round {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+  }
+
+  .fixture-timing {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .relative-time {
+    font-size: 0.875rem;
+  }
+
+  .fixture-meta {
+    font-size: 0.6875rem;
+  }
+
+  .fixture-teams {
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .fixture-score {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.625rem;
+  }
+
+  .season-progress {
+    margin-top: 0.75rem;
+  }
+
+  .progress-label {
+    font-size: 0.75rem;
+  }
+
+  .progress-bar {
+    height: 6px;
+  }
+
+  .timing-badge {
+    font-size: 0.9375rem;
+    padding: 0.375rem 1rem;
+  }
+
+  .match-meta {
+    font-size: 0.75rem;
   }
 }
 </style>
