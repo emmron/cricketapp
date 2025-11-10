@@ -646,58 +646,106 @@ watch(() => currentMatch.value.active, (newVal) => {
 }
 
 .manager-header {
-  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 50%, #d72317 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
   color: white;
-  padding: 2rem;
-  border-radius: 12px;
+  padding: 2.5rem;
+  border-radius: 16px;
   margin-bottom: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(215, 35, 23, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+.manager-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .manager-header h1 {
   margin: 0 0 1rem 0;
-  font-size: 2.5rem;
+  font-size: 2.8rem;
+  position: relative;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 800;
+  letter-spacing: -1px;
 }
 
 .header-stats {
   display: flex;
-  gap: 2rem;
+  gap: 1rem;
   flex-wrap: wrap;
+  position: relative;
 }
 
 .header-stats .stat {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 0.75rem 1.25rem;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.header-stats .stat:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 2rem;
-  border-bottom: 2px solid #e0e0e0;
+  background: white;
+  padding: 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .tabs button {
+  flex: 1;
   padding: 1rem 2rem;
   border: none;
   background: transparent;
   color: #666;
   cursor: pointer;
   font-size: 1rem;
-  border-bottom: 3px solid transparent;
+  font-weight: 600;
+  border-radius: 8px;
   transition: all 0.3s;
+  position: relative;
 }
 
 .tabs button.active {
-  color: #d72317;
-  border-bottom-color: #d72317;
-  font-weight: 600;
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(215, 35, 23, 0.3);
 }
 
-.tabs button:hover {
-  background: rgba(215, 35, 23, 0.05);
+.tabs button:not(.active):hover {
+  background: rgba(215, 35, 23, 0.08);
+  color: #d72317;
 }
 
 .tab-content {
@@ -722,16 +770,35 @@ watch(() => currentMatch.value.active, (newVal) => {
 
 .player-card {
   background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-  transition: all 0.3s;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #d72317, #ff6b35);
+  transform: scaleX(0);
+  transition: transform 0.4s;
 }
 
 .player-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(215, 35, 23, 0.15);
   border-color: #d72317;
+}
+
+.player-card:hover::before {
+  transform: scaleX(1);
 }
 
 .player-card.injured {
@@ -825,37 +892,85 @@ watch(() => currentMatch.value.active, (newVal) => {
 .opponent-btn {
   padding: 1.5rem;
   background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
   color: #333;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.opponent-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(215, 35, 23, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.opponent-btn:hover::before {
+  left: 100%;
 }
 
 .opponent-btn:hover {
-  background: #d72317;
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
   color: white;
   border-color: #d72317;
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(215, 35, 23, 0.3);
 }
 
 .action-btn {
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 50%, #d72317 100%);
+  background-size: 200% 200%;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.3s;
+  font-weight: 700;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 20px rgba(215, 35, 23, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
 }
 
 .action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(215, 35, 23, 0.3);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(215, 35, 23, 0.4);
+  background-position: 100% 0;
+}
+
+.action-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.action-btn:active {
+  transform: translateY(-1px) scale(0.98);
 }
 
 .random-match {
@@ -871,72 +986,130 @@ watch(() => currentMatch.value.active, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 50%, #d72317 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
   color: white;
-  padding: 2rem;
-  border-radius: 12px;
+  padding: 2.5rem;
+  border-radius: 20px;
   margin-bottom: 2rem;
+  box-shadow: 0 15px 50px rgba(215, 35, 23, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.scoreboard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
 .scoreboard .team {
   flex: 1;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .scoreboard .team h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .score-breakdown {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .score-breakdown .goals {
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 4rem;
+  font-weight: 900;
+  text-shadow: 4px 4px 12px rgba(0, 0, 0, 0.4);
+  animation: scoreAppear 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  line-height: 1;
+}
+
+@keyframes scoreAppear {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
 .score-breakdown .total-score {
-  font-size: 1.5rem;
-  opacity: 0.9;
+  font-size: 1.8rem;
+  opacity: 0.95;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.5rem 1.5rem;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
 }
 
 .match-time {
-  flex: 0 0 150px;
+  flex: 0 0 180px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1rem;
-  border-radius: 8px;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(20px);
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 .match-time .quarter {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 900;
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+  letter-spacing: 2px;
 }
 
 .match-time .time {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Courier New', monospace;
 }
 
 .pause-btn {
-  background: rgba(255, 255, 255, 0.3);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.2rem;
+  transition: all 0.3s;
+  backdrop-filter: blur(10px);
 }
 
 .pause-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.pause-btn:active {
+  transform: scale(0.95);
 }
 
 .match-events {
@@ -960,45 +1133,77 @@ watch(() => currentMatch.value.active, (newVal) => {
 .event {
   display: flex;
   gap: 1rem;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  border-left: 4px solid #e0e0e0;
-  background: #f9f9f9;
-  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  border-left: 5px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: slideIn 0.4s ease-out;
+  transition: all 0.3s;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.event:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .event.goal {
   border-left-color: #4caf50;
-  background: #f1f8f4;
+  background: linear-gradient(90deg, #f1f8f4 0%, white 100%);
+  border-left-width: 6px;
 }
 
 .event.behind {
   border-left-color: #ff9800;
-  background: #fff8f1;
+  background: linear-gradient(90deg, #fff8f1 0%, white 100%);
 }
 
 .event.mark,
 .event.tackle {
   border-left-color: #2196f3;
-  background: #f1f8ff;
+  background: linear-gradient(90deg, #f1f8ff 0%, white 100%);
 }
 
 .event.injury {
   border-left-color: #ff6b6b;
-  background: #fff5f5;
+  background: linear-gradient(90deg, #fff5f5 0%, white 100%);
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 .event.quarter {
   border-left-color: #9c27b0;
-  background: #f8f1ff;
-  font-weight: 600;
+  background: linear-gradient(135deg, #f8f1ff 0%, #fff 100%);
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-left-width: 6px;
 }
 
 .event.result {
   border-left-color: #ffd700;
-  background: #fffef5;
-  font-weight: 600;
-  font-size: 1.1rem;
+  background: linear-gradient(135deg, #fffef5 0%, #fff 100%);
+  font-weight: 700;
+  font-size: 1.15rem;
+  padding: 1.5rem;
+  border-left-width: 8px;
+  box-shadow: 0 6px 25px rgba(255, 215, 0, 0.3);
 }
 
 .event-time {
@@ -1021,13 +1226,15 @@ watch(() => currentMatch.value.active, (newVal) => {
   width: 100%;
   background: white;
   border-collapse: collapse;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .ladder-table thead {
-  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 50%, #d72317 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
   color: white;
 }
 
@@ -1044,25 +1251,35 @@ watch(() => currentMatch.value.active, (newVal) => {
 }
 
 .ladder-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all 0.3s;
 }
 
 .ladder-table tbody tr:hover {
-  background: #f5f5f5;
+  background: #f8f8f8;
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .ladder-table .our-team {
-  background: #fff3e0;
-  font-weight: 600;
+  background: linear-gradient(90deg, #fff3e0 0%, white 100%);
+  font-weight: 700;
+  border-left: 5px solid #ff9800;
+  border-right: 5px solid #ff9800;
 }
 
 .ladder-table .our-team:hover {
-  background: #ffe0b2;
+  background: linear-gradient(90deg, #ffe0b2 0%, #fff3e0 100%);
+  box-shadow: 0 4px 15px rgba(255, 152, 0, 0.2);
 }
 
 .ladder-table .finals {
-  border-left: 4px solid #4caf50;
+  border-left: 5px solid #4caf50;
+  background: linear-gradient(90deg, #f1f8f4 0%, white 100%);
+}
+
+.ladder-table .finals:not(.our-team) {
+  font-weight: 600;
 }
 
 .ladder-table .position {
@@ -1114,9 +1331,14 @@ watch(() => currentMatch.value.active, (newVal) => {
 
 .empty-state {
   text-align: center;
-  padding: 3rem;
+  padding: 4rem 2rem;
   color: #999;
   font-style: italic;
+  font-size: 1.1rem;
+  background: linear-gradient(135deg, #f9f9f9 0%, #fff 100%);
+  border-radius: 12px;
+  border: 2px dashed #e0e0e0;
+  animation: fadeIn 0.5s;
 }
 
 .top-scorers {
@@ -1191,10 +1413,37 @@ watch(() => currentMatch.value.active, (newVal) => {
 
 .overview-stat {
   text-align: center;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 50%, #d72317 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 10s ease infinite;
   color: white;
-  border-radius: 8px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(215, 35, 23, 0.3);
+  transition: all 0.4s;
+  position: relative;
+  overflow: hidden;
+}
+
+.overview-stat::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.overview-stat:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 12px 35px rgba(215, 35, 23, 0.4);
+}
+
+.overview-stat:hover::before {
+  opacity: 1;
 }
 
 .overview-stat h3 {
