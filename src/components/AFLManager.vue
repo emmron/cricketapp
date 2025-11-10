@@ -13,7 +13,8 @@ const reputation = ref(75)
 // Season state
 const currentRound = ref(1)
 const seasonYear = ref(2024)
-const MAX_ROUNDS = 23
+const MAX_ROUNDS = 27 // 23 home-and-away + 4 finals rounds
+const FINALS_START_ROUND = 24
 
 // Australian player names for authenticity
 const squad = ref([
@@ -94,6 +95,11 @@ const standings = ref([
 // Season fixtures - generated for 23 rounds
 const fixtures = ref([])
 
+// Finals state
+const finalsActive = ref(false)
+const finalsFixtures = ref([])
+const premiersTeam = ref(null)
+
 // Generate season fixtures
 const generateFixtures = () => {
   const teams = standings.value.map(t => t.team)
@@ -127,6 +133,197 @@ const generateFixtures = () => {
   fixtures.value = allFixtures
 }
 
+// Generate finals bracket from top 8 teams
+const generateFinals = () => {
+  const top8 = sortedStandings.value.slice(0, 8)
+
+  if (top8.length < 8) {
+    console.error('Not enough teams for finals')
+    return
+  }
+
+  finalsActive.value = true
+  finalsFixtures.value = []
+
+  // Week 1 - Qualifying Finals (Round 24)
+  finalsFixtures.value.push({
+    week: 1,
+    round: 24,
+    matchType: 'Qualifying Final 1',
+    homeTeam: top8[0].team,
+    awayTeam: top8[3].team,
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null
+  })
+
+  finalsFixtures.value.push({
+    week: 1,
+    round: 24,
+    matchType: 'Qualifying Final 2',
+    homeTeam: top8[1].team,
+    awayTeam: top8[2].team,
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null
+  })
+
+  // Week 1 - Elimination Finals (Round 24)
+  finalsFixtures.value.push({
+    week: 1,
+    round: 24,
+    matchType: 'Elimination Final 1',
+    homeTeam: top8[4].team,
+    awayTeam: top8[7].team,
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true
+  })
+
+  finalsFixtures.value.push({
+    week: 1,
+    round: 24,
+    matchType: 'Elimination Final 2',
+    homeTeam: top8[5].team,
+    awayTeam: top8[6].team,
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true
+  })
+
+  // Week 2 - Semi Finals (Round 25) - TBD based on Week 1 results
+  finalsFixtures.value.push({
+    week: 2,
+    round: 25,
+    matchType: 'Semi Final 1',
+    homeTeam: null, // Loser QF1
+    awayTeam: null, // Winner EF1
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true,
+    sourceHome: 'QF1_LOSER',
+    sourceAway: 'EF1_WINNER'
+  })
+
+  finalsFixtures.value.push({
+    week: 2,
+    round: 25,
+    matchType: 'Semi Final 2',
+    homeTeam: null, // Loser QF2
+    awayTeam: null, // Winner EF2
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true,
+    sourceHome: 'QF2_LOSER',
+    sourceAway: 'EF2_WINNER'
+  })
+
+  // Week 3 - Preliminary Finals (Round 26) - TBD based on Week 1 & 2 results
+  finalsFixtures.value.push({
+    week: 3,
+    round: 26,
+    matchType: 'Preliminary Final 1',
+    homeTeam: null, // Winner QF1
+    awayTeam: null, // Winner SF2
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true,
+    sourceHome: 'QF1_WINNER',
+    sourceAway: 'SF2_WINNER'
+  })
+
+  finalsFixtures.value.push({
+    week: 3,
+    round: 26,
+    matchType: 'Preliminary Final 2',
+    homeTeam: null, // Winner QF2
+    awayTeam: null, // Winner SF1
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    elimination: true,
+    sourceHome: 'QF2_WINNER',
+    sourceAway: 'SF1_WINNER'
+  })
+
+  // Week 4 - Grand Final (Round 27)
+  finalsFixtures.value.push({
+    week: 4,
+    round: 27,
+    matchType: 'GRAND FINAL',
+    homeTeam: null, // Winner PF1
+    awayTeam: null, // Winner PF2
+    homeScore: null,
+    awayScore: null,
+    played: false,
+    winner: null,
+    loser: null,
+    grandFinal: true,
+    sourceHome: 'PF1_WINNER',
+    sourceAway: 'PF2_WINNER'
+  })
+}
+
+// Update finals matchups based on previous results
+const updateFinalsMatchups = () => {
+  const qf1 = finalsFixtures.value.find(f => f.matchType === 'Qualifying Final 1')
+  const qf2 = finalsFixtures.value.find(f => f.matchType === 'Qualifying Final 2')
+  const ef1 = finalsFixtures.value.find(f => f.matchType === 'Elimination Final 1')
+  const ef2 = finalsFixtures.value.find(f => f.matchType === 'Elimination Final 2')
+  const sf1 = finalsFixtures.value.find(f => f.matchType === 'Semi Final 1')
+  const sf2 = finalsFixtures.value.find(f => f.matchType === 'Semi Final 2')
+  const pf1 = finalsFixtures.value.find(f => f.matchType === 'Preliminary Final 1')
+  const pf2 = finalsFixtures.value.find(f => f.matchType === 'Preliminary Final 2')
+  const gf = finalsFixtures.value.find(f => f.matchType === 'GRAND FINAL')
+
+  // Week 2 matchups from Week 1 results
+  if (qf1?.played && ef1?.played && !sf1.homeTeam) {
+    sf1.homeTeam = qf1.loser
+    sf1.awayTeam = ef1.winner
+  }
+  if (qf2?.played && ef2?.played && !sf2.homeTeam) {
+    sf2.homeTeam = qf2.loser
+    sf2.awayTeam = ef2.winner
+  }
+
+  // Week 3 matchups from Week 1 & 2 results
+  if (qf1?.played && sf2?.played && !pf1.homeTeam) {
+    pf1.homeTeam = qf1.winner
+    pf1.awayTeam = sf2.winner
+  }
+  if (qf2?.played && sf1?.played && !pf2.homeTeam) {
+    pf2.homeTeam = qf2.winner
+    pf2.awayTeam = sf1.winner
+  }
+
+  // Grand Final matchups from Week 3 results
+  if (pf1?.played && pf2?.played && !gf.homeTeam) {
+    gf.homeTeam = pf1.winner
+    gf.awayTeam = pf2.winner
+  }
+}
+
 // Initialize fixtures on load
 generateFixtures()
 
@@ -152,7 +349,16 @@ const topScorers = computed(() => {
 })
 
 const currentRoundFixtures = computed(() => {
+  if (currentRound.value >= FINALS_START_ROUND) {
+    return finalsFixtures.value.filter(f => f.round === currentRound.value)
+  }
   return fixtures.value.filter(f => f.round === currentRound.value)
+})
+
+const currentWeekFinals = computed(() => {
+  if (!finalsActive.value) return []
+  const week = currentRound.value - FINALS_START_ROUND + 1
+  return finalsFixtures.value.filter(f => f.week === week)
 })
 
 const nextMatch = computed(() => {
@@ -372,60 +578,94 @@ const endMatch = () => {
     }
   })
 
-  // Update ladder
-  const ourTeam = standings.value.find(t => t.team === teamName.value)
-  const opponentTeam = standings.value.find(t => t.team === currentMatch.value.opponent)
-
   const ourScore = currentMatch.value.isHome ? homeScore.value : awayScore.value
   const theirScore = currentMatch.value.isHome ? awayScore.value : homeScore.value
+  const isFinalsMatch = currentMatch.value.round >= FINALS_START_ROUND
 
-  // Update our team
-  ourTeam.played++
-  ourTeam.pf += ourScore
-  ourTeam.pa += theirScore
+  // Update ladder (only for regular season)
+  if (!isFinalsMatch) {
+    const ourTeam = standings.value.find(t => t.team === teamName.value)
+    const opponentTeam = standings.value.find(t => t.team === currentMatch.value.opponent)
 
-  // Update opponent
-  opponentTeam.played++
-  opponentTeam.pf += theirScore
-  opponentTeam.pa += ourScore
+    // Update our team
+    ourTeam.played++
+    ourTeam.pf += ourScore
+    ourTeam.pa += theirScore
 
-  // AFL uses 4 points for win, 2 for draw, 0 for loss
+    // Update opponent
+    opponentTeam.played++
+    opponentTeam.pf += theirScore
+    opponentTeam.pa += ourScore
+
+    // AFL uses 4 points for win, 2 for draw, 0 for loss
+    if (ourScore > theirScore) {
+      ourTeam.won++
+      ourTeam.points += 4
+      opponentTeam.lost++
+    } else if (ourScore < theirScore) {
+      ourTeam.lost++
+      opponentTeam.won++
+      opponentTeam.points += 4
+    } else {
+      ourTeam.drawn++
+      ourTeam.points += 2
+      opponentTeam.drawn++
+      opponentTeam.points += 2
+    }
+
+    // Calculate percentages
+    ourTeam.percentage = ourTeam.pa > 0 ? (ourTeam.pf / ourTeam.pa * 100).toFixed(2) : 100
+    opponentTeam.percentage = opponentTeam.pa > 0 ? (opponentTeam.pf / opponentTeam.pa * 100).toFixed(2) : 100
+  }
+
+  // Display result
   if (ourScore > theirScore) {
-    ourTeam.won++
-    ourTeam.points += 4
-    opponentTeam.lost++
+    const msg = isFinalsMatch
+      ? `🏆 FINALS VICTORY! Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) def. ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+      : `🏆 VICTORY! Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) def. ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
     currentMatch.value.events.unshift({
       type: 'result',
-      message: `🏆 VICTORY! Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) def. ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+      message: msg
     })
   } else if (ourScore < theirScore) {
-    ourTeam.lost++
-    opponentTeam.won++
-    opponentTeam.points += 4
+    const msg = isFinalsMatch
+      ? `😞 Finals Defeat. Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) lost to ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+      : `😞 Defeat. Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) lost to ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
     currentMatch.value.events.unshift({
       type: 'result',
-      message: `😞 Defeat. Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) lost to ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+      message: msg
     })
   } else {
-    ourTeam.drawn++
-    ourTeam.points += 2
-    opponentTeam.drawn++
-    opponentTeam.points += 2
     currentMatch.value.events.unshift({
       type: 'result',
       message: `🤝 Draw! Final Score: ${currentMatch.value.homeTeam} ${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value}) drew with ${currentMatch.value.awayTeam} ${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
     })
   }
 
-  // Calculate percentages
-  ourTeam.percentage = ourTeam.pa > 0 ? (ourTeam.pf / ourTeam.pa * 100).toFixed(2) : 100
-  opponentTeam.percentage = opponentTeam.pa > 0 ? (opponentTeam.pf / opponentTeam.pa * 100).toFixed(2) : 100
-
   // Mark fixture as played
   if (currentMatch.value.fixture) {
     currentMatch.value.fixture.played = true
     currentMatch.value.fixture.homeScore = `${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value})`
     currentMatch.value.fixture.awayScore = `${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+
+    // For finals, set winner and loser
+    if (isFinalsMatch) {
+      if (homeScore.value > awayScore.value) {
+        currentMatch.value.fixture.winner = currentMatch.value.homeTeam
+        currentMatch.value.fixture.loser = currentMatch.value.awayTeam
+      } else {
+        currentMatch.value.fixture.winner = currentMatch.value.awayTeam
+        currentMatch.value.fixture.loser = currentMatch.value.homeTeam
+      }
+
+      // Check for Grand Final
+      if (currentMatch.value.fixture.grandFinal) {
+        premiersTeam.value = currentMatch.value.fixture.winner
+      }
+
+      // Update finals bracket
+      updateFinalsMatchups()
+    }
   }
 
   // Toggle home/away for next match
@@ -452,7 +692,7 @@ const simulateQuickMatch = (fixture) => {
   fixture.awayScore = `${awayGoals}.${awayBehinds} (${awayScore})`
   fixture.played = true
 
-  // Update ladder
+  // Update ladder (only for regular season)
   const homeTeam = standings.value.find(t => t.team === fixture.homeTeam)
   const awayTeam = standings.value.find(t => t.team === fixture.awayTeam)
 
@@ -482,11 +722,81 @@ const simulateQuickMatch = (fixture) => {
   awayTeam.percentage = awayTeam.pa > 0 ? (awayTeam.pf / awayTeam.pa * 100).toFixed(2) : 100
 }
 
+// Simulate finals match
+const simulateFinalsMatch = (fixture) => {
+  if (!fixture.homeTeam || !fixture.awayTeam) {
+    console.log('Cannot simulate match - teams not set yet')
+    return
+  }
+
+  let homeGoals = Math.floor(Math.random() * 10) + 8
+  let homeBehinds = Math.floor(Math.random() * 12) + 4
+  let awayGoals = Math.floor(Math.random() * 10) + 8
+  let awayBehinds = Math.floor(Math.random() * 12) + 4
+
+  let homeScore = homeGoals * 6 + homeBehinds
+  let awayScore = awayGoals * 6 + awayBehinds
+
+  // No draws in finals - keep generating until we have a winner
+  while (homeScore === awayScore) {
+    homeGoals = Math.floor(Math.random() * 10) + 8
+    homeBehinds = Math.floor(Math.random() * 12) + 4
+    awayGoals = Math.floor(Math.random() * 10) + 8
+    awayBehinds = Math.floor(Math.random() * 12) + 4
+    homeScore = homeGoals * 6 + homeBehinds
+    awayScore = awayGoals * 6 + awayBehinds
+  }
+
+  fixture.homeScore = `${homeGoals}.${homeBehinds} (${homeScore})`
+  fixture.awayScore = `${awayGoals}.${awayBehinds} (${awayScore})`
+  fixture.played = true
+
+  // Set winner and loser
+  if (homeScore > awayScore) {
+    fixture.winner = fixture.homeTeam
+    fixture.loser = fixture.awayTeam
+  } else {
+    fixture.winner = fixture.awayTeam
+    fixture.loser = fixture.homeTeam
+  }
+
+  // Check for Grand Final
+  if (fixture.grandFinal) {
+    premiersTeam.value = fixture.winner
+  }
+
+  // Update finals bracket
+  updateFinalsMatchups()
+}
+
 // Simulate entire round (all CPU vs CPU matches)
 const simulateRound = () => {
+  // Check if we need to generate finals
+  if (currentRound.value === 23 && !finalsActive.value) {
+    // Check if all round 23 matches are played
+    const allRound23Played = fixtures.value
+      .filter(f => f.round === 23)
+      .every(f => f.played)
+
+    if (allRound23Played) {
+      generateFinals()
+      currentRound.value = FINALS_START_ROUND
+      return
+    }
+  }
+
   const roundFixtures = currentRoundFixtures.value
+  const isFinalsRound = currentRound.value >= FINALS_START_ROUND
+
   roundFixtures.forEach(fixture => {
-    if (!fixture.played && fixture.homeTeam !== teamName.value && fixture.awayTeam !== teamName.value) {
+    // Skip our team's matches and already played matches
+    if (fixture.played) return
+    if (fixture.homeTeam === teamName.value || fixture.awayTeam === teamName.value) return
+
+    // Simulate the match
+    if (isFinalsRound) {
+      simulateFinalsMatch(fixture)
+    } else {
       simulateQuickMatch(fixture)
     }
   })
@@ -558,6 +868,11 @@ const resetSeason = () => {
   currentRound.value = 1
   generateFixtures()
 
+  // Reset finals
+  finalsActive.value = false
+  finalsFixtures.value = []
+  premiersTeam.value = null
+
   currentMatch.value = {
     active: false,
     paused: false,
@@ -611,6 +926,12 @@ watch(() => currentMatch.value.active, (newVal) => {
         @click="activeTab = 'ladder'"
         :class="{ active: activeTab === 'ladder' }">
         Ladder
+      </button>
+      <button
+        v-if="finalsActive || premiersTeam"
+        @click="activeTab = 'finals'"
+        :class="{ active: activeTab === 'finals' }">
+        🏆 Finals
       </button>
       <button
         @click="activeTab = 'squad'"
@@ -673,6 +994,155 @@ watch(() => currentMatch.value.active, (newVal) => {
             </div>
             <div v-if="!fixture.played" class="fixture-status">Not Played</div>
             <div v-else class="fixture-status completed">✓ Completed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Finals Tab -->
+    <div v-if="activeTab === 'finals'" class="tab-content">
+      <div class="finals-header">
+        <h2>🏆 AFL Finals Series {{ seasonYear }}</h2>
+        <p v-if="!premiersTeam" class="finals-subtitle">Road to the Premiership</p>
+        <div v-else class="premiers-banner">
+          <h1>🎉 {{ premiersTeam }} 🎉</h1>
+          <p class="premiers-title">{{ seasonYear }} PREMIERS!</p>
+        </div>
+      </div>
+
+      <div class="finals-bracket">
+        <!-- Week 1 - Qualifying & Elimination Finals -->
+        <div class="finals-week">
+          <h3 class="week-title">Week 1 - Finals</h3>
+          <div class="finals-matches">
+            <div
+              v-for="(match, idx) in finalsFixtures.filter(f => f.week === 1)"
+              :key="idx"
+              class="finals-match-card"
+              :class="{
+                'played': match.played,
+                'our-match': match.homeTeam === teamName || match.awayTeam === teamName,
+                'elimination': match.elimination
+              }">
+              <div class="match-title">{{ match.matchType }}</div>
+              <div class="finals-teams">
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.homeTeam }">
+                  <span class="team-name">{{ match.homeTeam }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.homeScore }}</span>
+                  <span v-if="match.played && match.winner === match.homeTeam" class="winner-badge">✓</span>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.awayTeam }">
+                  <span class="team-name">{{ match.awayTeam }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.awayScore }}</span>
+                  <span v-if="match.played && match.winner === match.awayTeam" class="winner-badge">✓</span>
+                </div>
+              </div>
+              <div v-if="!match.played && match.homeTeam && match.awayTeam" class="match-status pending">Upcoming</div>
+              <div v-if="match.played" class="match-status completed">Completed</div>
+              <div v-if="match.elimination && match.played" class="elimination-note">{{ match.loser }} eliminated</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week 2 - Semi Finals -->
+        <div v-if="finalsFixtures.filter(f => f.week === 2 && (f.homeTeam || f.played)).length > 0" class="finals-week">
+          <h3 class="week-title">Week 2 - Semi Finals</h3>
+          <div class="finals-matches">
+            <div
+              v-for="(match, idx) in finalsFixtures.filter(f => f.week === 2)"
+              :key="idx"
+              v-show="match.homeTeam || match.played"
+              class="finals-match-card"
+              :class="{
+                'played': match.played,
+                'our-match': match.homeTeam === teamName || match.awayTeam === teamName
+              }">
+              <div class="match-title">{{ match.matchType }}</div>
+              <div class="finals-teams">
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.homeTeam }">
+                  <span class="team-name">{{ match.homeTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.homeScore }}</span>
+                  <span v-if="match.played && match.winner === match.homeTeam" class="winner-badge">✓</span>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.awayTeam }">
+                  <span class="team-name">{{ match.awayTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.awayScore }}</span>
+                  <span v-if="match.played && match.winner === match.awayTeam" class="winner-badge">✓</span>
+                </div>
+              </div>
+              <div v-if="!match.played && match.homeTeam && match.awayTeam" class="match-status pending">Upcoming</div>
+              <div v-if="match.played" class="match-status completed">Completed</div>
+              <div v-if="match.played" class="elimination-note">{{ match.loser }} eliminated</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week 3 - Preliminary Finals -->
+        <div v-if="finalsFixtures.filter(f => f.week === 3 && (f.homeTeam || f.played)).length > 0" class="finals-week">
+          <h3 class="week-title">Week 3 - Preliminary Finals</h3>
+          <div class="finals-matches">
+            <div
+              v-for="(match, idx) in finalsFixtures.filter(f => f.week === 3)"
+              :key="idx"
+              v-show="match.homeTeam || match.played"
+              class="finals-match-card"
+              :class="{
+                'played': match.played,
+                'our-match': match.homeTeam === teamName || match.awayTeam === teamName
+              }">
+              <div class="match-title">{{ match.matchType }}</div>
+              <div class="finals-teams">
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.homeTeam }">
+                  <span class="team-name">{{ match.homeTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.homeScore }}</span>
+                  <span v-if="match.played && match.winner === match.homeTeam" class="winner-badge">✓</span>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.awayTeam }">
+                  <span class="team-name">{{ match.awayTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.awayScore }}</span>
+                  <span v-if="match.played && match.winner === match.awayTeam" class="winner-badge">✓</span>
+                </div>
+              </div>
+              <div v-if="!match.played && match.homeTeam && match.awayTeam" class="match-status pending">Upcoming</div>
+              <div v-if="match.played" class="match-status completed">Completed</div>
+              <div v-if="match.played" class="elimination-note">{{ match.loser }} eliminated</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week 4 - Grand Final -->
+        <div v-if="finalsFixtures.filter(f => f.week === 4 && (f.homeTeam || f.played)).length > 0" class="finals-week grand-final-week">
+          <h3 class="week-title grand-final-title">🏆 Week 4 - GRAND FINAL 🏆</h3>
+          <div class="finals-matches">
+            <div
+              v-for="(match, idx) in finalsFixtures.filter(f => f.week === 4)"
+              :key="idx"
+              v-show="match.homeTeam || match.played"
+              class="finals-match-card grand-final-card"
+              :class="{
+                'played': match.played,
+                'our-match': match.homeTeam === teamName || match.awayTeam === teamName
+              }">
+              <div class="match-title grand-final-label">GRAND FINAL</div>
+              <div class="finals-teams">
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.homeTeam }">
+                  <span class="team-name">{{ match.homeTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.homeScore }}</span>
+                  <span v-if="match.played && match.winner === match.homeTeam" class="winner-badge">👑</span>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="finals-team" :class="{ winner: match.played && match.winner === match.awayTeam }">
+                  <span class="team-name">{{ match.awayTeam || 'TBD' }}</span>
+                  <span v-if="match.played" class="team-score">{{ match.awayScore }}</span>
+                  <span v-if="match.played && match.winner === match.awayTeam" class="winner-badge">👑</span>
+                </div>
+              </div>
+              <div v-if="!match.played && match.homeTeam && match.awayTeam" class="match-status pending grand-final-pending">Upcoming</div>
+              <div v-if="match.played" class="match-status completed">{{ match.winner }} - PREMIERS!</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1861,6 +2331,235 @@ watch(() => currentMatch.value.active, (newVal) => {
   color: #2e7d32;
 }
 
+/* Finals Styles */
+.finals-header {
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  color: white;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(215, 35, 23, 0.4);
+}
+
+.finals-header h2 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.finals-subtitle {
+  margin: 1rem 0 0 0;
+  font-size: 1.2rem;
+  opacity: 0.95;
+  font-style: italic;
+}
+
+.premiers-banner {
+  margin-top: 1rem;
+  padding: 2rem;
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  border: 3px solid #ffd700;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.premiers-banner h1 {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+  animation: shimmer 3s infinite;
+}
+
+.premiers-title {
+  margin: 0.5rem 0 0 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 3px;
+}
+
+.finals-bracket {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.finals-week {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.finals-week.grand-final-week {
+  background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+  border: 3px solid #ffd700;
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.3);
+}
+
+.week-title {
+  margin: 0 0 1.5rem 0;
+  color: #d72317;
+  font-size: 1.8rem;
+  font-weight: 700;
+  border-bottom: 3px solid #d72317;
+  padding-bottom: 0.5rem;
+}
+
+.week-title.grand-final-title {
+  color: #ffd700;
+  border-bottom-color: #ffd700;
+  font-size: 2rem;
+  text-align: center;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.finals-matches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.finals-match-card {
+  background: #f9f9f9;
+  border: 3px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.finals-match-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.finals-match-card.our-match {
+  background: linear-gradient(135deg, #fff3e0 0%, #fff 100%);
+  border-color: #ff9800;
+  border-width: 4px;
+}
+
+.finals-match-card.played {
+  opacity: 0.95;
+}
+
+.finals-match-card.grand-final-card {
+  background: linear-gradient(135deg, #fffef5 0%, #fff 100%);
+  border-color: #ffd700;
+  border-width: 4px;
+  box-shadow: 0 6px 25px rgba(255, 215, 0, 0.3);
+}
+
+.match-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #d72317;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e8e8e8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.match-title.grand-final-label {
+  font-size: 1.3rem;
+  color: #ffd700;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+  border-bottom-color: #ffd700;
+}
+
+.finals-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.finals-team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 2px solid #e8e8e8;
+  transition: all 0.3s;
+}
+
+.finals-team.winner {
+  background: linear-gradient(90deg, #e8f5e9 0%, #fff 100%);
+  border-color: #4caf50;
+  border-width: 3px;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.finals-team .team-name {
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.finals-team .team-score {
+  font-weight: 700;
+  color: #d72317;
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+}
+
+.finals-team .winner-badge {
+  font-size: 1.5rem;
+  animation: scoreAppear 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.vs-divider {
+  text-align: center;
+  font-weight: 700;
+  color: #999;
+  font-size: 0.9rem;
+  padding: 0.25rem 0;
+}
+
+.match-status {
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.match-status.pending {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.match-status.grand-final-pending {
+  background: #fff9e6;
+  color: #f57c00;
+  border: 2px solid #ffd700;
+}
+
+.match-status.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.elimination-note {
+  text-align: center;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #ffcdd2;
+}
+
 @media (max-width: 768px) {
   .manager-header h1 {
     font-size: 1.8rem;
@@ -1923,6 +2622,22 @@ watch(() => currentMatch.value.active, (newVal) => {
 
   .vs {
     font-size: 1.8rem;
+  }
+
+  .finals-matches {
+    grid-template-columns: 1fr;
+  }
+
+  .finals-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .premiers-banner h1 {
+    font-size: 2rem;
+  }
+
+  .week-title {
+    font-size: 1.4rem;
   }
 }
 </style>
