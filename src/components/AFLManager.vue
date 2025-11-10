@@ -2,13 +2,18 @@
 import { ref, computed, watch } from 'vue'
 
 // Game state
-const activeTab = ref('squad')
+const activeTab = ref('calendar')
 const simulationSpeed = ref(400)
 
 // Team data
 const teamName = ref('Melbourne Demons')
 const budget = ref(15000000)
 const reputation = ref(75)
+
+// Season state
+const currentRound = ref(1)
+const seasonYear = ref(2024)
+const MAX_ROUNDS = 23
 
 // Australian player names for authenticity
 const squad = ref([
@@ -60,7 +65,8 @@ const currentMatch = ref({
   timeInQuarter: 0,
   events: [],
   isHome: true,
-  quarterBreak: false
+  quarterBreak: false,
+  round: 1
 })
 
 // AFL Ladder (18 teams like real AFL)
@@ -85,6 +91,45 @@ const standings = ref([
   { team: 'North Melbourne', played: 0, won: 0, drawn: 0, lost: 0, pf: 0, pa: 0, percentage: 100, points: 0 }
 ])
 
+// Season fixtures - generated for 23 rounds
+const fixtures = ref([])
+
+// Generate season fixtures
+const generateFixtures = () => {
+  const teams = standings.value.map(t => t.team)
+  const allFixtures = []
+
+  // Simple round-robin generation (each team plays each other once + byes)
+  for (let round = 1; round <= MAX_ROUNDS; round++) {
+    const roundMatches = []
+    const teamsThisRound = [...teams]
+
+    // Shuffle teams for variety
+    teamsThisRound.sort(() => Math.random() - 0.5)
+
+    // Create matches (9 matches per round, some teams get byes)
+    for (let i = 0; i < teamsThisRound.length - 1; i += 2) {
+      if (teamsThisRound[i + 1]) {
+        roundMatches.push({
+          round,
+          homeTeam: teamsThisRound[i],
+          awayTeam: teamsThisRound[i + 1],
+          homeScore: null,
+          awayScore: null,
+          played: false
+        })
+      }
+    }
+
+    allFixtures.push(...roundMatches)
+  }
+
+  fixtures.value = allFixtures
+}
+
+// Initialize fixtures on load
+generateFixtures()
+
 // Computed properties
 const sortedStandings = computed(() => {
   return [...standings.value].sort((a, b) => {
@@ -104,6 +149,23 @@ const topScorers = computed(() => {
     .filter(p => p.goals > 0)
     .sort((a, b) => b.goals - a.goals)
     .slice(0, 5)
+})
+
+const currentRoundFixtures = computed(() => {
+  return fixtures.value.filter(f => f.round === currentRound.value)
+})
+
+const nextMatch = computed(() => {
+  return fixtures.value.find(f =>
+    !f.played &&
+    (f.homeTeam === teamName.value || f.awayTeam === teamName.value)
+  )
+})
+
+const ourNextMatch = computed(() => {
+  return currentRoundFixtures.value.find(f =>
+    f.homeTeam === teamName.value || f.awayTeam === teamName.value
+  )
 })
 
 const availableOpponents = computed(() => {
@@ -359,6 +421,13 @@ const endMatch = () => {
   ourTeam.percentage = ourTeam.pa > 0 ? (ourTeam.pf / ourTeam.pa * 100).toFixed(2) : 100
   opponentTeam.percentage = opponentTeam.pa > 0 ? (opponentTeam.pf / opponentTeam.pa * 100).toFixed(2) : 100
 
+  // Mark fixture as played
+  if (currentMatch.value.fixture) {
+    currentMatch.value.fixture.played = true
+    currentMatch.value.fixture.homeScore = `${currentMatch.value.homeGoals}.${currentMatch.value.homeBehinds} (${homeScore.value})`
+    currentMatch.value.fixture.awayScore = `${currentMatch.value.awayGoals}.${currentMatch.value.awayBehinds} (${awayScore.value})`
+  }
+
   // Toggle home/away for next match
   currentMatch.value.isHome = !currentMatch.value.isHome
 }
@@ -367,6 +436,99 @@ const healAllPlayers = () => {
   squad.value.forEach(player => {
     player.injured = false
   })
+}
+
+// Quick match simulation (for CPU vs CPU)
+const simulateQuickMatch = (fixture) => {
+  const homeGoals = Math.floor(Math.random() * 10) + 8  // 8-17 goals
+  const homeBehinds = Math.floor(Math.random() * 12) + 4 // 4-15 behinds
+  const awayGoals = Math.floor(Math.random() * 10) + 8
+  const awayBehinds = Math.floor(Math.random() * 12) + 4
+
+  const homeScore = homeGoals * 6 + homeBehinds
+  const awayScore = awayGoals * 6 + awayBehinds
+
+  fixture.homeScore = `${homeGoals}.${homeBehinds} (${homeScore})`
+  fixture.awayScore = `${awayGoals}.${awayBehinds} (${awayScore})`
+  fixture.played = true
+
+  // Update ladder
+  const homeTeam = standings.value.find(t => t.team === fixture.homeTeam)
+  const awayTeam = standings.value.find(t => t.team === fixture.awayTeam)
+
+  homeTeam.played++
+  awayTeam.played++
+  homeTeam.pf += homeScore
+  homeTeam.pa += awayScore
+  awayTeam.pf += awayScore
+  awayTeam.pa += homeScore
+
+  if (homeScore > awayScore) {
+    homeTeam.won++
+    homeTeam.points += 4
+    awayTeam.lost++
+  } else if (awayScore > homeScore) {
+    awayTeam.won++
+    awayTeam.points += 4
+    homeTeam.lost++
+  } else {
+    homeTeam.drawn++
+    awayTeam.drawn++
+    homeTeam.points += 2
+    awayTeam.points += 2
+  }
+
+  homeTeam.percentage = homeTeam.pa > 0 ? (homeTeam.pf / homeTeam.pa * 100).toFixed(2) : 100
+  awayTeam.percentage = awayTeam.pa > 0 ? (awayTeam.pf / awayTeam.pa * 100).toFixed(2) : 100
+}
+
+// Simulate entire round (all CPU vs CPU matches)
+const simulateRound = () => {
+  const roundFixtures = currentRoundFixtures.value
+  roundFixtures.forEach(fixture => {
+    if (!fixture.played && fixture.homeTeam !== teamName.value && fixture.awayTeam !== teamName.value) {
+      simulateQuickMatch(fixture)
+    }
+  })
+
+  // Check if our match is done, if so advance round
+  const ourMatch = ourNextMatch.value
+  if (!ourMatch || ourMatch.played) {
+    if (currentRound.value < MAX_ROUNDS) {
+      currentRound.value++
+    }
+  }
+}
+
+// Play our next match from calendar
+const playNextMatch = () => {
+  const match = ourNextMatch.value
+  if (!match) return
+
+  const isHome = match.homeTeam === teamName.value
+  const opponent = isHome ? match.awayTeam : match.homeTeam
+
+  currentMatch.value = {
+    active: true,
+    paused: false,
+    opponent,
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    homeGoals: 0,
+    homeBehinds: 0,
+    awayGoals: 0,
+    awayBehinds: 0,
+    quarter: 1,
+    timeInQuarter: 0,
+    events: [],
+    isHome,
+    quarterBreak: false,
+    round: currentRound.value,
+    fixture: match
+  }
+
+  activeTab.value = 'match'
+  simulateMatch()
 }
 
 const resetSeason = () => {
@@ -392,6 +554,10 @@ const resetSeason = () => {
     player.injured = false
   })
 
+  // Reset season
+  currentRound.value = 1
+  generateFixtures()
+
   currentMatch.value = {
     active: false,
     paused: false,
@@ -406,7 +572,8 @@ const resetSeason = () => {
     timeInQuarter: 0,
     events: [],
     isHome: true,
-    quarterBreak: false
+    quarterBreak: false,
+    round: 1
   }
 }
 
@@ -431,9 +598,9 @@ watch(() => currentMatch.value.active, (newVal) => {
 
     <nav class="tabs">
       <button
-        @click="activeTab = 'squad'"
-        :class="{ active: activeTab === 'squad' }">
-        Squad
+        @click="activeTab = 'calendar'"
+        :class="{ active: activeTab === 'calendar' }">
+        📅 Calendar
       </button>
       <button
         @click="activeTab = 'match'"
@@ -446,11 +613,70 @@ watch(() => currentMatch.value.active, (newVal) => {
         Ladder
       </button>
       <button
+        @click="activeTab = 'squad'"
+        :class="{ active: activeTab === 'squad' }">
+        Squad
+      </button>
+      <button
         @click="activeTab = 'stats'"
         :class="{ active: activeTab === 'stats' }">
         Statistics
       </button>
     </nav>
+
+    <!-- Calendar Tab -->
+    <div v-if="activeTab === 'calendar'" class="tab-content">
+      <div class="season-header">
+        <h2>Season {{ seasonYear }} - Round {{ currentRound }} of {{ MAX_ROUNDS }}</h2>
+        <div class="calendar-controls">
+          <button @click="simulateRound" class="action-btn">⚡ Simulate Other Matches</button>
+          <button v-if="ourNextMatch" @click="playNextMatch" class="action-btn primary">▶️ Play Next Match</button>
+        </div>
+      </div>
+
+      <div v-if="ourNextMatch" class="next-match-card">
+        <h3>🏈 YOUR NEXT MATCH</h3>
+        <div class="next-match-details">
+          <div class="team-badge">
+            <strong>{{ ourNextMatch.homeTeam }}</strong>
+            <span class="venue-tag">{{ ourNextMatch.homeTeam === teamName ? 'HOME' : 'AWAY' }}</span>
+          </div>
+          <div class="vs">VS</div>
+          <div class="team-badge">
+            <strong>{{ ourNextMatch.awayTeam }}</strong>
+            <span class="venue-tag">{{ ourNextMatch.awayTeam === teamName ? 'HOME' : 'AWAY' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="round-fixtures">
+        <h3>Round {{ currentRound }} Fixtures</h3>
+        <div class="fixtures-grid">
+          <div
+            v-for="(fixture, index) in currentRoundFixtures"
+            :key="index"
+            class="fixture-card"
+            :class="{
+              'our-match': fixture.homeTeam === teamName || fixture.awayTeam === teamName,
+              'played': fixture.played
+            }">
+            <div class="fixture-teams">
+              <div class="fixture-team home">
+                <span class="team-name">{{ fixture.homeTeam }}</span>
+                <span v-if="fixture.played" class="team-score">{{ fixture.homeScore }}</span>
+              </div>
+              <div class="fixture-vs">{{ fixture.played ? 'def' : 'vs' }}</div>
+              <div class="fixture-team away">
+                <span class="team-name">{{ fixture.awayTeam }}</span>
+                <span v-if="fixture.played" class="team-score">{{ fixture.awayScore }}</span>
+              </div>
+            </div>
+            <div v-if="!fixture.played" class="fixture-status">Not Played</div>
+            <div v-else class="fixture-status completed">✓ Completed</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Squad Tab -->
     <div v-if="activeTab === 'squad'" class="tab-content">
@@ -1460,6 +1686,181 @@ watch(() => currentMatch.value.active, (newVal) => {
   letter-spacing: 1px;
 }
 
+/* Calendar Styles */
+.season-header {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2rem;
+}
+
+.season-header h2 {
+  margin: 0 0 1.5rem 0;
+  color: #d72317;
+  font-size: 1.8rem;
+}
+
+.calendar-controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 50%, #4caf50 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+.next-match-card {
+  background: linear-gradient(135deg, #d72317 0%, #8b1810 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 35px rgba(215, 35, 23, 0.3);
+  animation: fadeIn 0.5s;
+}
+
+.next-match-card h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.next-match-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.team-badge {
+  flex: 1;
+  min-width: 200px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.team-badge strong {
+  display: block;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.venue-tag {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.vs {
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.round-fixtures {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.round-fixtures h3 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.fixtures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.fixture-card {
+  background: #f9f9f9;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s;
+}
+
+.fixture-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.fixture-card.our-match {
+  background: linear-gradient(135deg, #fff3e0 0%, #fff 100%);
+  border-color: #ff9800;
+  border-width: 3px;
+}
+
+.fixture-card.played {
+  opacity: 0.8;
+}
+
+.fixture-teams {
+  margin-bottom: 1rem;
+}
+
+.fixture-team {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+
+.fixture-team.home {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.team-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.team-score {
+  font-weight: 700;
+  color: #d72317;
+  font-size: 1.1rem;
+}
+
+.fixture-vs {
+  text-align: center;
+  font-weight: 600;
+  color: #999;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.fixture-status {
+  text-align: center;
+  padding: 0.5rem;
+  background: #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.fixture-status.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
 @media (max-width: 768px) {
   .manager-header h1 {
     font-size: 1.8rem;
@@ -1498,6 +1899,30 @@ watch(() => currentMatch.value.active, (newVal) => {
   .ladder-table th,
   .ladder-table td {
     padding: 0.5rem;
+  }
+
+  .fixtures-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-controls {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .next-match-details {
+    flex-direction: column;
+  }
+
+  .team-badge {
+    min-width: 100%;
+  }
+
+  .vs {
+    font-size: 1.8rem;
   }
 }
 </style>
