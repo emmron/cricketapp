@@ -1,72 +1,62 @@
 <script setup>
-import FootballManager from './components/FootballManager.vue'
+import { ref, computed } from 'vue'
+import Sidebar from './components/Sidebar.vue'
+import Dashboard from './components/Dashboard.vue'
+import SitesList from './components/SitesList.vue'
+import SiteDetail from './components/SiteDetail.vue'
+import NewSite from './components/NewSite.vue'
+import Databases from './components/Databases.vue'
+import Servers from './components/Servers.vue'
+import Settings from './components/Settings.vue'
+
+const currentPage = ref('dashboard')
+const selectedSite = ref(null)
+const sidebarCollapsed = ref(false)
+
+function navigate(page, data = null) {
+  if (page === 'site-detail' && data) {
+    selectedSite.value = data
+  }
+  currentPage.value = page
+}
 </script>
 
 <template>
-  <div class="app-container">
-    <main class="main-content">
-      <FootballManager />
-    </main>
-
-    <footer class="app-footer">
-      <div class="footer-content">
-        <p class="footer-text">&copy; 2024 AFL Manager Simulator. Built with Vue 3 + Vite</p>
-      </div>
-    </footer>
+  <div class="app-shell">
+    <Sidebar
+      :current-page="currentPage"
+      :collapsed="sidebarCollapsed"
+      @navigate="navigate"
+      @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
+    />
+    <div class="main-area" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <Dashboard v-if="currentPage === 'dashboard'" @navigate="navigate" />
+      <SitesList v-else-if="currentPage === 'sites'" @navigate="navigate" />
+      <SiteDetail v-else-if="currentPage === 'site-detail'" :site="selectedSite" @navigate="navigate" />
+      <NewSite v-else-if="currentPage === 'new-site'" @navigate="navigate" />
+      <Databases v-else-if="currentPage === 'databases'" />
+      <Servers v-else-if="currentPage === 'servers'" />
+      <Settings v-else-if="currentPage === 'settings'" />
+    </div>
   </div>
 </template>
 
 <style scoped>
-.app-container {
-  min-height: 100vh;
+.app-shell {
   display: flex;
-  flex-direction: column;
-  background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+  min-height: 100vh;
+  background: var(--bg-base);
 }
 
-.main-content {
+.main-area {
   flex: 1;
-  padding: 2rem 1rem;
+  margin-left: 240px;
+  transition: margin-left 0.25s ease;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-.app-footer {
-  text-align: center;
-  padding: 1.5rem;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.7);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.footer-text {
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    padding: 0.5rem 0;
-  }
-
-  .app-footer {
-    padding: 1rem;
-  }
-
-  .footer-text {
-    font-size: 0.75rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .main-content {
-    padding: 0.25rem 0;
-  }
-
-  .app-footer {
-    padding: 0.875rem 0.5rem;
-  }
-
-  .footer-text {
-    font-size: 0.7rem;
-  }
+.main-area.sidebar-collapsed {
+  margin-left: 64px;
 }
 </style>

@@ -1,7 +1,7 @@
 {
-  "name": "football-manager-simulator",
+  "name": "coolify",
   "version": "1.0.0",
-  "description": "Football Manager Simulator - Manage your team, simulate matches, and win trophies",
+  "description": "Coolify - Self-hosted Netlify alternative for deploying web applications",
   "private": true,
   "type": "module",
   "scripts": {
