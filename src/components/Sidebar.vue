@@ -1,9 +1,12 @@
 <script setup>
+import { theme, toggleTheme } from '../composables/useStore.js'
+
 defineProps({
   currentPage: String,
   collapsed: Boolean,
+  mobileOpen: Boolean,
 })
-const emit = defineEmits(['navigate', 'toggle-collapse'])
+const emit = defineEmits(['navigate', 'toggle-collapse', 'close-mobile'])
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -15,9 +18,16 @@ const navItems = [
 </script>
 
 <template>
-  <aside class="sidebar" :class="{ collapsed }">
+  <aside class="sidebar" :class="{ collapsed, 'mobile-open': mobileOpen }">
+    <!-- Mobile close button -->
+    <button class="mobile-close" @click="emit('close-mobile')" aria-label="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <div class="sidebar-header">
-      <div class="logo-wrap" @click="emit('navigate', 'dashboard')">
+      <div class="logo-wrap" @click="emit('navigate', 'dashboard')" role="button" tabindex="0">
         <div class="logo-icon">
           <svg viewBox="0 0 32 32" fill="none">
             <rect width="32" height="32" rx="8" fill="#6366f1"/>
@@ -27,7 +37,7 @@ const navItems = [
         </div>
         <span v-if="!collapsed" class="logo-text">Coolify</span>
       </div>
-      <button class="collapse-btn" @click="emit('toggle-collapse')" :title="collapsed ? 'Expand' : 'Collapse'">
+      <button class="collapse-btn desktop-only" @click="emit('toggle-collapse')" :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path v-if="!collapsed" d="M11 19l-7-7 7-7M18 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
           <path v-else d="M13 5l7 7-7 7M6 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
@@ -52,14 +62,30 @@ const navItems = [
     </nav>
 
     <div class="sidebar-footer">
-      <div class="user-info" v-if="!collapsed">
-        <div class="avatar">A</div>
-        <div class="user-details">
+      <!-- Theme toggle -->
+      <button
+        class="theme-btn"
+        :class="{ 'icon-only': collapsed }"
+        @click="toggleTheme"
+        :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+      >
+        <svg v-if="theme === 'dark'" class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m14.95-6.36l-.71.71M6.4 17.6l-.71.71m12.02 0l-.71-.71M6.4 6.4l-.71-.71M12 7a5 5 0 100 10A5 5 0 0012 7z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg v-else class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span v-if="!collapsed">{{ theme === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
+      </button>
+
+      <!-- User row -->
+      <div class="user-row">
+        <div class="avatar" :title="collapsed ? 'Admin' : ''">A</div>
+        <div v-if="!collapsed" class="user-details">
           <div class="user-name">Admin</div>
           <div class="user-role">Owner</div>
         </div>
       </div>
-      <div class="avatar" v-else title="Admin">A</div>
     </div>
   </aside>
 </template>
@@ -75,21 +101,37 @@ const navItems = [
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: width 0.25s ease;
+  transition: width 0.25s ease, transform 0.25s ease;
   z-index: 100;
+  overflow: hidden;
 }
 
-.sidebar.collapsed {
-  width: 64px;
+.sidebar.collapsed { width: 64px; }
+
+.mobile-close {
+  display: none;
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 6px;
 }
+
+.mobile-close svg { width: 18px; height: 18px; }
+.mobile-close:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1rem;
+  padding: 1.125rem 1rem;
   border-bottom: 1px solid var(--border);
   min-height: 64px;
+  flex-shrink: 0;
 }
 
 .logo-wrap {
@@ -99,18 +141,11 @@ const navItems = [
   cursor: pointer;
   flex: 1;
   overflow: hidden;
+  outline: none;
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.logo-icon svg {
-  width: 32px;
-  height: 32px;
-}
+.logo-icon { width: 32px; height: 32px; flex-shrink: 0; }
+.logo-icon svg { width: 32px; height: 32px; }
 
 .logo-text {
   font-size: 1.125rem;
@@ -128,20 +163,12 @@ const navItems = [
   color: var(--text-muted);
   border-radius: 4px;
   display: flex;
-  align-items: center;
   flex-shrink: 0;
   transition: color 0.15s, background 0.15s;
 }
 
-.collapse-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-.collapse-btn svg {
-  width: 16px;
-  height: 16px;
-}
+.collapse-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.collapse-btn svg { width: 16px; height: 16px; }
 
 .sidebar-nav {
   flex: 1;
@@ -167,40 +194,52 @@ const navItems = [
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
   overflow: hidden;
+  font-family: inherit;
 }
 
-.nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--accent-subtle); color: var(--accent); }
 
-.nav-item.active {
-  background: var(--accent-subtle);
-  color: var(--accent);
-}
+.nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.nav-label { font-size: 0.875rem; font-weight: 500; }
 
-.nav-icon {
-  width: 20px;
-  height: 20px;
+.sidebar-footer {
+  padding: 0.75rem 0.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.nav-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--border);
+.theme-btn {
   display: flex;
   align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  width: 100%;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.user-info {
+.theme-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.theme-btn.icon-only { justify-content: center; }
+
+.theme-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+.user-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
+  padding: 0.375rem 0.25rem;
   overflow: hidden;
 }
 
@@ -219,9 +258,7 @@ const navItems = [
   cursor: default;
 }
 
-.user-details {
-  overflow: hidden;
-}
+.user-details { overflow: hidden; }
 
 .user-name {
   font-size: 0.8125rem;
@@ -232,8 +269,17 @@ const navItems = [
   text-overflow: ellipsis;
 }
 
-.user-role {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.user-role { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 240px !important;
+    box-shadow: 6px 0 30px rgba(0,0,0,0.4);
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .mobile-close { display: flex; }
+  .desktop-only { display: none !important; }
 }
 </style>
